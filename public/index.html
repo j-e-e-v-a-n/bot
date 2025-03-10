@@ -91,12 +91,15 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
   <script>
-    const SOCKET_SERVER_URL = 'https://bot-6p92.onrender.com'; // Your backend server
-    const HTTP_PING_URL = `${SOCKET_SERVER_URL}/ping`;
+    // Backend socket server URL
+    const SOCKET_SERVER_URL = 'http://localhost:5000'; // <-- Change this if deployed elsewhere
+    const HTTP_PING_URL = `${SOCKET_SERVER_URL}/ping`; // Ping route to prevent idle disconnects
 
+    // DOM Elements
     const qrDiv = document.getElementById('qrcode');
     const statusDiv = document.getElementById('status');
 
+    // Connect to backend via socket.io
     const socket = io(SOCKET_SERVER_URL);
 
     socket.on('connect', () => {
@@ -125,11 +128,13 @@
       }
     });
 
+    // Update the status message and style
     function updateStatus(message, connected = false) {
       statusDiv.textContent = message;
       statusDiv.className = connected ? 'connected' : '';
     }
 
+    // Ping server periodically to keep connection alive
     async function pingServer() {
       try {
         const res = await fetch(HTTP_PING_URL);
@@ -139,6 +144,7 @@
       }
     }
 
+    // Ping every 5 minutes to keep the server connection alive
     setInterval(pingServer, 5 * 60 * 1000);
     pingServer();
   </script>
