@@ -11,10 +11,11 @@ const fs = require('fs');
 // Configurations & Data
 const config = require('./config');
 
-// Products File Load with Error Handling
+// Load Products File with Error Handling
 let products = [];
 try {
-  products = JSON.parse(fs.readFileSync('./products.json', 'utf-8'));
+  const productData = fs.readFileSync('./products.json', 'utf-8');
+  products = JSON.parse(productData);
   console.log(`✅ Loaded ${products.length} products.`);
 } catch (err) {
   console.error('❌ Failed to load products.json:', err);
@@ -27,9 +28,9 @@ const ordersFilePath = './orders.json';
 // Express Setup
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, { cors: { origin: '*' } }); // Added CORS (if you want it accessible externally)
+const io = socketIo(server, { cors: { origin: '*' } });
 
-// Serve static files (index.html)
+// Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
 // WhatsApp Client Setup
@@ -37,8 +38,8 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  },
 });
 
 // Socket.io QR Tracking
@@ -50,7 +51,8 @@ app.get('/', (req, res) => {
 });
 
 // --- WhatsApp Events ---
-client.on('qr', async qr => {
+
+client.on('qr', async (qr) => {
   console.log('📱 QR RECEIVED!');
   qrcodeTerminal.generate(qr, { small: true });
 
@@ -73,16 +75,16 @@ client.on('authenticated', () => {
   io.emit('status', '🔐 Authenticated');
 });
 
-client.on('auth_failure', msg => {
+client.on('auth_failure', (msg) => {
   console.error('❌ Authentication Failure:', msg);
   io.emit('status', '❌ Authentication Failed');
 });
 
-client.on('disconnected', reason => {
+client.on('disconnected', (reason) => {
   console.warn('❌ Client Disconnected:', reason);
   io.emit('status', '❌ WhatsApp Disconnected');
 
-  // Optional: Auto-restart client after disconnect
+  // Auto-restart client after disconnect
   setTimeout(() => {
     console.log('♻️ Re-initializing client...');
     client.initialize();
@@ -90,7 +92,7 @@ client.on('disconnected', reason => {
 });
 
 // --- Functions ---
-// Parse Order Details
+
 function parseOrder(messageText) {
   const lines = messageText.split('\n').map(line => line.trim());
   const orderDetails = [];
@@ -107,7 +109,7 @@ function parseOrder(messageText) {
         name: name.trim(),
         quantity: parseInt(quantity),
         price: parseInt(price),
-        id: id.trim()
+        id: id.trim(),
       });
     }
 
@@ -128,11 +130,10 @@ function parseOrder(messageText) {
     orderDetails,
     subtotal: parseInt(subtotal) || 0,
     shipping: parseInt(shipping) || 0,
-    total: parseInt(total) || 0
+    total: parseInt(total) || 0,
   };
 }
 
-// Validate Order
 function validateOrder(order) {
   let calculatedSubtotal = 0;
 
@@ -148,7 +149,7 @@ function validateOrder(order) {
     if (expectedPrice !== item.price) {
       return {
         valid: false,
-        reason: `❌ Price mismatch for ${item.name}. Expected ₹${expectedPrice}, got ₹${item.price}`
+        reason: `❌ Price mismatch for ${item.name}. Expected ₹${expectedPrice}, got ₹${item.price}`,
       };
     }
 
@@ -158,14 +159,14 @@ function validateOrder(order) {
   if (calculatedSubtotal !== order.subtotal) {
     return {
       valid: false,
-      reason: `❌ Subtotal mismatch. Expected ₹${calculatedSubtotal}, got ₹${order.subtotal}`
+      reason: `❌ Subtotal mismatch. Expected ₹${calculatedSubtotal}, got ₹${order.subtotal}`,
     };
   }
 
   if (order.shipping !== config.SHIPPING_COST) {
     return {
       valid: false,
-      reason: `❌ Shipping cost mismatch. Expected ₹${config.SHIPPING_COST}, got ₹${order.shipping}`
+      reason: `❌ Shipping cost mismatch. Expected ₹${config.SHIPPING_COST}, got ₹${order.shipping}`,
     };
   }
 
@@ -174,14 +175,13 @@ function validateOrder(order) {
   if (order.total !== expectedTotal) {
     return {
       valid: false,
-      reason: `❌ Total amount mismatch. Expected ₹${expectedTotal}, got ₹${order.total}`
+      reason: `❌ Total amount mismatch. Expected ₹${expectedTotal}, got ₹${order.total}`,
     };
   }
 
   return { valid: true, amount: expectedTotal };
 }
 
-// Generate UPI Link & QR
 function generateUpiLink(amount) {
   return `upi://pay?pa=${config.UPI_ID}&pn=${encodeURIComponent(config.BUSINESS_NAME)}&am=${amount}&cu=INR`;
 }
@@ -191,13 +191,13 @@ async function generateUpiQr(amount) {
   return await QRCode.toDataURL(link);
 }
 
-// Save Order to File
 function saveOrder(order, userName) {
   let orders = [];
 
   try {
     if (fs.existsSync(ordersFilePath)) {
-      orders = JSON.parse(fs.readFileSync(ordersFilePath, 'utf-8'));
+      const ordersData = fs.readFileSync(ordersFilePath, 'utf-8');
+      orders = JSON.parse(ordersData);
     }
   } catch (err) {
     console.error('❌ Failed to read orders file:', err);
@@ -206,7 +206,7 @@ function saveOrder(order, userName) {
   orders.push({
     timestamp: new Date().toISOString(),
     customer: userName,
-    ...order
+    ...order,
   });
 
   try {
@@ -218,19 +218,19 @@ function saveOrder(order, userName) {
 }
 
 // --- WhatsApp Message Handler ---
-client.on('message', async message => {
-  const userName = message.notifyName || message.pushName || 'there';
+
+client.on('message', async (message) => {
+  const userName = message.notifyName || message.pushName || 'Customer';
   const msg = message.body.toLowerCase();
 
   try {
-    // Order Processing
     if (msg.includes('order details:') && msg.includes('customer details:')) {
       const order = parseOrder(message.body);
       const validation = validateOrder(order);
 
       if (!validation.valid) {
         console.log(`❌ Validation Failed: ${validation.reason}`);
-        await message.reply(`Hi ${userName},\n\n${validation.reason}\n\n⚠️ Please ensure the order is correct.`);
+        await message.reply(`Hi ${userName},\n\n${validation.reason}\n\n⚠️ Please check and send the correct order details.`);
         return;
       }
 
@@ -242,24 +242,22 @@ client.on('message', async message => {
       saveOrder(order, userName);
 
       await message.reply(
-        `✅ Hi ${userName}, your order is verified!\n\n` +
-        `🛒 Total Amount: ₹${amount}\n\n` +
-        `Please pay via the link below or scan the attached QR Code.\n\n` +
-        `👉 *Click here to pay:* ${upiLink}\n\n` +
-        `After payment, kindly send the screenshot for confirmation.\n\n` +
+        `✅ Hi ${userName}, your order has been verified!\n\n` +
+        `🛒 *Total Amount*: ₹${amount}\n\n` +
+        `Please make the payment using the link below or scan the QR Code.\n\n` +
+        `👉 *Pay Now:* ${upiLink}\n\n` +
+        `Once paid, kindly share the payment screenshot for confirmation.\n\n` +
         `Thank you for shopping with ${config.BUSINESS_NAME}!`
       );
 
-      await message.reply(qrMedia, '', { caption: `📲 Hi ${userName}, scan this QR Code to pay!` });
+      await message.reply(qrMedia, '', { caption: `📲 Hi ${userName}, scan this QR to pay ₹${amount}.` });
 
-      // Forward Order to Admin
       const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
       await client.sendMessage(adminNumber, `📦 *New Order from ${userName}*\n\n${message.body}`);
 
       return;
     }
 
-    // Payment Screenshot Detection
     if (message.hasMedia) {
       console.log(`✅ Payment screenshot received from ${userName}.`);
 
@@ -267,25 +265,24 @@ client.on('message', async message => {
       const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
 
       await client.sendMessage(adminNumber, media, {
-        caption: `💸 Payment screenshot from ${userName}`
+        caption: `💸 Payment screenshot from ${userName}`,
       });
 
       await message.reply(
-        `✅ Hi ${userName}, payment screenshot received!\n\n` +
-        `🎉 Your order is now being processed!\n\n` +
-        `We will notify you once it's shipped.\n\n` +
-        `Need help? Contact: ${config.SUPPORT_NUMBER}`
+        `✅ Hi ${userName}, we have received your payment screenshot!\n\n` +
+        `🎉 Your order is now being processed.\n\n` +
+        `We will notify you once it is shipped!\n\n` +
+        `For any queries, contact: ${config.SUPPORT_NUMBER}`
       );
 
       return;
     }
 
-    // Greetings Handler
-    if (/hi|hello|hey/gi.test(msg)) {
+    if (/^(hi|hello|hey)\b/gi.test(msg)) {
       await message.reply(
-        `👋 Hi ${userName}, welcome to ${config.BUSINESS_NAME}!\n\n` +
-        `How can we help you today?\n\n` +
-        `For order queries, share your order details.\n\n` +
+        `👋 Hi ${userName}, welcome to *${config.BUSINESS_NAME}*!\n\n` +
+        `How can we assist you today?\n\n` +
+        `📝 To place an order, send your order details in the following format:\n\n` +
         `For support, contact: ${config.SUPPORT_NUMBER}`
       );
     }
@@ -297,25 +294,25 @@ client.on('message', async message => {
 });
 
 // --- Weekly Orders Backup ---
-const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
 
 setInterval(async () => {
-  if (fs.existsSync(ordersFilePath)) {
-    try {
-      const fileData = fs.readFileSync(ordersFilePath);
-      const base64Data = fileData.toString('base64');
+  if (!fs.existsSync(ordersFilePath)) return;
 
-      const media = new MessageMedia('application/json', base64Data, 'orders.json');
+  try {
+    const fileData = fs.readFileSync(ordersFilePath);
+    const base64Data = fileData.toString('base64');
+    const media = new MessageMedia('application/json', base64Data, 'orders.json');
 
-      const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
-      await client.sendMessage(adminNumber, media, { caption: '📁 Weekly Orders Backup' });
+    const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
+    await client.sendMessage(adminNumber, media, { caption: '📁 Weekly Orders Backup' });
 
-      console.log('✅ Weekly orders.json sent to admin');
-    } catch (err) {
-      console.error('❌ Failed to send weekly orders.json:', err);
-    }
+    console.log('✅ Weekly orders.json sent to admin');
+  } catch (err) {
+    console.error('❌ Failed to send weekly orders.json:', err);
   }
-}, oneWeek);
+}, oneWeekMs);
 
 // --- Initialize WhatsApp Client ---
 client.initialize();

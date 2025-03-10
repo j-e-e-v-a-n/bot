@@ -1,0 +1,151 @@
+[
+    {
+      "question": "What is your return policy?",
+      "answer": "📝 Our return policy allows you to return products within 7 days of delivery if they are defective or damaged. Please contact our support team at +91 98765 43210 for assistance."
+    },
+    {
+      "question": "How long does delivery take?",
+      "answer": "🚚 We usually deliver orders within 3-7 business days. You will receive a tracking link once your order is shipped."
+    },
+    {
+      "question": "What payment methods do you accept?",
+      "answer": "💳 We accept UPI, debit cards, credit cards, and net banking. You can also pay via cash on delivery for selected products."
+    },
+    {
+      "question": "How do I track my order?",
+      "answer": "🔎 Once your order is shipped, you will receive an SMS/WhatsApp message with the tracking link."
+    },
+    {
+      "question": "Do you ship internationally?",
+      "answer": "🌍 Currently, we only ship within India. We will notify our customers when we expand internationally!"
+    },
+    {
+      "question": "Can I cancel my order after placing it?",
+      "answer": "❌ You can cancel your order within 2 hours of placing it. After that, the order will be processed, and cancellation may not be possible. Contact support immediately for assistance."
+    },
+    {
+      "question": "Can I change my delivery address after placing an order?",
+      "answer": "📍 Yes, you can change your delivery address before your order is shipped. Contact our support team at +91 98765 43210 as soon as possible."
+    },
+    {
+      "question": "Do you offer Cash on Delivery (COD)?",
+      "answer": "💰 Yes! We offer COD for selected products and locations. You can check availability on the product page or during checkout."
+    },
+    {
+      "question": "How do I contact customer support?",
+      "answer": "📞 You can contact our support team via WhatsApp at +91 98765 43210 or email us at support@example.com. Our working hours are 10 AM - 7 PM, Monday to Saturday."
+    },
+    {
+      "question": "What if I receive a damaged product?",
+      "answer": "😔 We're sorry about that! If you receive a damaged product, please take clear pictures of the item and packaging and share them with our support team within 48 hours of delivery."
+    },
+    {
+      "question": "Do you offer gift wrapping services?",
+      "answer": "🎁 Yes, we offer gift wrapping at an additional charge. You can select this option during checkout!"
+    },
+    {
+      "question": "Are your products covered under warranty?",
+      "answer": "🛡️ Yes, most of our electronic products come with a 6-month to 1-year warranty. You can check the product description for warranty details."
+    },
+    {
+      "question": "Can I return an item on sale?",
+      "answer": "🚫 Sale or discounted items are non-returnable unless they are damaged or defective."
+    },
+    {
+      "question": "How do I apply a discount coupon?",
+      "answer": "🏷️ You can apply your discount coupon at checkout. Enter the coupon code in the 'Apply Coupon' field and click on 'Apply'."
+    },
+    {
+      "question": "My payment failed, what should I do?",
+      "answer": "⚠️ If your payment failed but the amount was debited, it will be automatically refunded within 5-7 business days. You can also contact our support team with your transaction details."
+    },
+    {
+      "question": "Can I pre-order products?",
+      "answer": "🕒 Yes! Pre-order options are available for upcoming products. The expected delivery date will be mentioned on the product page."
+    },
+    {
+      "question": "How do I create an account?",
+      "answer": "👤 Click on the 'Sign Up' button on the top-right corner of our website. Enter your details and create a password to register your account."
+    },
+    {
+      "question": "I forgot my password, how do I reset it?",
+      "answer": "🔐 Click on 'Forgot Password' at the login page. Enter your registered email or mobile number to receive a password reset link."
+    },
+    {
+      "question": "How do I update my profile details?",
+      "answer": "📝 Log into your account and go to 'My Profile'. You can update your name, address, phone number, and other details there."
+    },
+    {
+      "question": "Do you have a loyalty program?",
+      "answer": "🏆 Yes! Join our loyalty program and earn points on every purchase. Points can be redeemed for discounts and exclusive offers."
+    },
+    {
+      "question": "What if I entered the wrong UPI ID for payment?",
+      "answer": "🚨 If you entered the wrong UPI ID, the payment will fail, and no amount will be deducted. Please double-check before making a payment."
+    },
+    {
+      "question": "Can I order in bulk for wholesale?",
+      "answer": "📦 Yes, we accept bulk orders. Contact our wholesale team at wholesale@example.com for special pricing and offers."
+    },
+    {
+      "question": "Is there a minimum order value?",
+      "answer": "✅ There is no minimum order value for retail customers. For wholesale or bulk orders, a minimum value applies. Contact our team for more details."
+    },
+    {
+      "question": "Where are you located?",
+      "answer": "📍 Our office and warehouse are located in Perumbavoor, Kerala, India. We deliver all over India!"
+    },
+    {
+      "question": "Do you provide installation services?",
+      "answer": "🛠️ Yes, we provide installation services for selected electrical and electronic products within select cities. Contact us after purchase to schedule an installation."
+    },
+    {
+      "question": "Can I request a custom product?",
+      "answer": "🎨 We offer customization for certain products like gift boxes and apparel. Contact our support team with your requirements!"
+    },
+    {
+      "question": "How do I know if a product is in stock?",
+      "answer": "📦 If a product is in stock, you will see the 'Add to Cart' button enabled. Out-of-stock products will be marked as 'Sold Out'."
+    },
+    {
+      "question": "What happens if my order is delayed?",
+      "answer": "⏳ We strive for on-time delivery, but delays can occur due to unforeseen circumstances. We will keep you informed and share regular updates."
+    },
+    {
+      "question": "Do you offer EMI options?",
+      "answer": "💳 Yes, EMI options are available on selected credit cards and payment gateways. You will see the EMI option during checkout if eligible."
+    },
+    {
+      "question": "How do I delete my account?",
+      "answer": "🗑️ To delete your account, please email us at support@example.com with your registered email ID. We will process your request within 7 working days."
+    },
+    {
+      "question": "What are your customer support hours?",
+      "answer": "🕘 Our customer support is available Monday to Saturday from 10 AM to 7 PM IST. We are closed on Sundays and public holidays."
+    },
+    {
+      "question": "Do you sell eco-friendly products?",
+      "answer": "🌱 Yes, we offer a range of eco-friendly and sustainable products. Look for the 'Eco-Friendly' label on the product page."
+    },
+    {
+      "question": "Can I reorder my previous orders?",
+      "answer": "🔄 Yes! Log in to your account, go to 'My Orders', and click on 'Reorder' for any past purchases."
+    },
+    {
+      "question": "Do you offer free shipping?",
+      "answer": "🚚 Free shipping is available on orders above ₹999. Below that, standard shipping charges apply depending on your location."
+    },
+    {
+      "question": "What is your refund policy?",
+      "answer": "💵 Refunds are processed within 7-10 business days after we receive and inspect the returned item. Refunds will be made to your original payment method."
+    },
+    {
+      "question": "What happens if I miss the delivery?",
+      "answer": "📦 If you miss the delivery, our courier partner will attempt delivery up to 3 times. After that, the product will be returned to us."
+    },
+    {
+      "question": "Do you offer seasonal sales or discounts?",
+      "answer": "🔥 Yes! We run seasonal sales during festivals and special occasions. Follow us on Instagram and Facebook for updates!"
+    }
+  ]
+  
