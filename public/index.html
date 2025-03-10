@@ -7,7 +7,6 @@
   <meta name="description" content="WhatsApp Bot QR Code Login Page" />
   <title>WhatsApp QR Code Login</title>
   
-  <!-- Optional: Favicon -->
   <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" type="image/svg+xml" />
 
   <style>
@@ -23,7 +22,7 @@
       color: #333;
     }
 
-    .container {
+    .container, .password-container {
       width: 90%;
       max-width: 400px;
       text-align: center;
@@ -67,11 +66,51 @@
       font-size: 0.85rem;
       color: #aaa;
     }
+
+    .hidden {
+      display: none;
+    }
+
+    .password-container input {
+      padding: 0.75rem;
+      width: 100%;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .password-container button {
+      padding: 0.75rem 1.5rem;
+      background-color: #075e54;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .password-container button:hover {
+      background-color: #064d45;
+    }
+
+    .error {
+      color: #d9534f;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 
 <body>
-  <div class="container">
+
+  <!-- PASSWORD SCREEN -->
+  <div class="password-container" id="passwordScreen">
+    <h1>Enter Password</h1>
+    <input type="password" id="passwordInput" placeholder="Password" />
+    <button onclick="checkPassword()">Submit</button>
+    <div class="error" id="errorMessage"></div>
+  </div>
+
+  <!-- QR CODE LOGIN SCREEN (Hidden Initially) -->
+  <div class="container hidden" id="loginScreen">
     <h1>WhatsApp QR Login</h1>
 
     <!-- QR Code Display Area -->
@@ -91,62 +130,73 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
   <script>
-    // Backend socket server URL
-    const SOCKET_SERVER_URL = 'https://bot-6p92.onrender.com'; // <-- Change this if deployed elsewhere
-    const HTTP_PING_URL = `${SOCKET_SERVER_URL}/ping`; // Ping route to prevent idle disconnects
+    const CORRECT_PASSWORD = 'faris123'; // Change this to your preferred password
 
-    // DOM Elements
-    const qrDiv = document.getElementById('qrcode');
-    const statusDiv = document.getElementById('status');
+    function checkPassword() {
+      const input = document.getElementById('passwordInput').value;
+      const errorMsg = document.getElementById('errorMessage');
 
-    // Connect to backend via socket.io
-    const socket = io(SOCKET_SERVER_URL);
-
-    socket.on('connect', () => {
-      console.log('✅ Connected to backend socket:', socket.id);
-      updateStatus('Connected to server. Waiting for QR...', false);
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.warn(`❌ Disconnected: ${reason}`);
-      updateStatus('Disconnected from server. Trying to reconnect...', false);
-    });
-
-    socket.on('qr', (qrData) => {
-      console.log('📲 New QR code received');
-      qrDiv.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code">`;
-      updateStatus('Scan this QR code with WhatsApp!', false);
-    });
-
-    socket.on('status', (status) => {
-      console.log('ℹ️ Status update:', status);
-      if (status.toLowerCase().includes('connected')) {
-        qrDiv.innerHTML = '<p>WhatsApp Connected ✅</p>';
-        updateStatus(status, true);
+      if (input === CORRECT_PASSWORD) {
+        document.getElementById('passwordScreen').classList.add('hidden');
+        document.getElementById('loginScreen').classList.remove('hidden');
+        initSocket(); // Start socket connection after password is correct
       } else {
-        updateStatus(status, false);
-      }
-    });
-
-    // Update the status message and style
-    function updateStatus(message, connected = false) {
-      statusDiv.textContent = message;
-      statusDiv.className = connected ? 'connected' : '';
-    }
-
-    // Ping server periodically to keep connection alive
-    async function pingServer() {
-      try {
-        const res = await fetch(HTTP_PING_URL);
-        console.log(`✅ Ping successful! (${res.status})`);
-      } catch (err) {
-        console.error('❌ Ping failed:', err.message);
+        errorMsg.textContent = 'Incorrect password. Try again.';
       }
     }
 
-    // Ping every 5 minutes to keep the server connection alive
-    setInterval(pingServer, 5 * 60 * 1000);
-    pingServer();
+    function initSocket() {
+      const SOCKET_SERVER_URL = 'https://bot-6p92.onrender.com'; // <-- Change this if deployed elsewhere
+      const HTTP_PING_URL = `${SOCKET_SERVER_URL}/ping`;
+
+      const qrDiv = document.getElementById('qrcode');
+      const statusDiv = document.getElementById('status');
+
+      const socket = io(SOCKET_SERVER_URL);
+
+      socket.on('connect', () => {
+        console.log('✅ Connected to backend socket:', socket.id);
+        updateStatus('Connected to server. Waiting for QR...', false);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.warn(`❌ Disconnected: ${reason}`);
+        updateStatus('Disconnected from server. Trying to reconnect...', false);
+      });
+
+      socket.on('qr', (qrData) => {
+        console.log('📲 New QR code received');
+        qrDiv.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code">`;
+        updateStatus('Scan this QR code with WhatsApp!', false);
+      });
+
+      socket.on('status', (status) => {
+        console.log('ℹ️ Status update:', status);
+        if (status.toLowerCase().includes('connected')) {
+          qrDiv.innerHTML = '<p>WhatsApp Connected ✅</p>';
+          updateStatus(status, true);
+        } else {
+          updateStatus(status, false);
+        }
+      });
+
+      function updateStatus(message, connected = false) {
+        statusDiv.textContent = message;
+        statusDiv.className = connected ? 'connected' : '';
+      }
+
+      async function pingServer() {
+        try {
+          const res = await fetch(HTTP_PING_URL);
+          console.log(`✅ Ping successful! (${res.status})`);
+        } catch (err) {
+          console.error('❌ Ping failed:', err.message);
+        }
+      }
+
+      setInterval(pingServer, 5 * 60 * 1000);
+      pingServer();
+    }
   </script>
 </body>
 </html>
