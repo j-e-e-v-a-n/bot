@@ -10,7 +10,16 @@ const fs = require('fs');
 
 // Configurations & Data
 const config = require('./config');
-const products = JSON.parse(fs.readFileSync('./products.json', 'utf-8'));
+
+// Products File Load with Error Handling
+let products = [];
+try {
+  products = JSON.parse(fs.readFileSync('./products.json', 'utf-8'));
+  console.log(`✅ Loaded ${products.length} products.`);
+} catch (err) {
+  console.error('❌ Failed to load products.json:', err);
+  process.exit(1);
+}
 
 // Orders file path
 const ordersFilePath = './orders.json';
@@ -18,7 +27,7 @@ const ordersFilePath = './orders.json';
 // Express Setup
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, { cors: { origin: '*' } }); // Added CORS (if you want it accessible externally)
 
 // Serve static files (index.html)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -40,7 +49,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// WhatsApp Events
+// --- WhatsApp Events ---
 client.on('qr', async qr => {
   console.log('📱 QR RECEIVED!');
   qrcodeTerminal.generate(qr, { small: true });
@@ -72,9 +81,16 @@ client.on('auth_failure', msg => {
 client.on('disconnected', reason => {
   console.warn('❌ Client Disconnected:', reason);
   io.emit('status', '❌ WhatsApp Disconnected');
+
+  // Optional: Auto-restart client after disconnect
+  setTimeout(() => {
+    console.log('♻️ Re-initializing client...');
+    client.initialize();
+  }, 5000);
 });
 
-// Function: Parse Order Details
+// --- Functions ---
+// Parse Order Details
 function parseOrder(messageText) {
   const lines = messageText.split('\n').map(line => line.trim());
   const orderDetails = [];
@@ -116,7 +132,7 @@ function parseOrder(messageText) {
   };
 }
 
-// Function: Validate Order
+// Validate Order
 function validateOrder(order) {
   let calculatedSubtotal = 0;
 
@@ -165,18 +181,17 @@ function validateOrder(order) {
   return { valid: true, amount: expectedTotal };
 }
 
-// Function: Generate UPI Link
+// Generate UPI Link & QR
 function generateUpiLink(amount) {
   return `upi://pay?pa=${config.UPI_ID}&pn=${encodeURIComponent(config.BUSINESS_NAME)}&am=${amount}&cu=INR`;
 }
 
-// Function: Generate UPI QR (Base64 Image)
 async function generateUpiQr(amount) {
   const link = generateUpiLink(amount);
   return await QRCode.toDataURL(link);
 }
 
-// Function: Save Order to File
+// Save Order to File
 function saveOrder(order, userName) {
   let orders = [];
 
@@ -196,12 +211,13 @@ function saveOrder(order, userName) {
 
   try {
     fs.writeFileSync(ordersFilePath, JSON.stringify(orders, null, 2));
+    console.log(`✅ Order saved for ${userName}`);
   } catch (err) {
     console.error('❌ Failed to save order:', err);
   }
 }
 
-// WhatsApp Message Handler
+// --- WhatsApp Message Handler ---
 client.on('message', async message => {
   const userName = message.notifyName || message.pushName || 'there';
   const msg = message.body.toLowerCase();
@@ -225,7 +241,6 @@ client.on('message', async message => {
 
       saveOrder(order, userName);
 
-      // Notify Customer
       await message.reply(
         `✅ Hi ${userName}, your order is verified!\n\n` +
         `🛒 Total Amount: ₹${amount}\n\n` +
@@ -235,10 +250,9 @@ client.on('message', async message => {
         `Thank you for shopping with ${config.BUSINESS_NAME}!`
       );
 
-      // Send QR Code
       await message.reply(qrMedia, '', { caption: `📲 Hi ${userName}, scan this QR Code to pay!` });
 
-      // Forward Order Message to Admin
+      // Forward Order to Admin
       const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
       await client.sendMessage(adminNumber, `📦 *New Order from ${userName}*\n\n${message.body}`);
 
@@ -282,8 +296,8 @@ client.on('message', async message => {
   }
 });
 
-// Weekly task to send orders.json to admin
-const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+// --- Weekly Orders Backup ---
+const oneWeek = 7 * 24 * 60 * 60 * 1000;
 
 setInterval(async () => {
   if (fs.existsSync(ordersFilePath)) {
@@ -303,10 +317,10 @@ setInterval(async () => {
   }
 }, oneWeek);
 
-// Initialize WhatsApp Client
+// --- Initialize WhatsApp Client ---
 client.initialize();
 
-// Start Express Server
+// --- Start Express Server ---
 server.listen(config.PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${config.PORT}`);
 });
