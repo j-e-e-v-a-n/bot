@@ -1,3 +1,4 @@
 node_modules/
 .env
 *.log
+.wwebjs_cache/2.3000.1020734701.html

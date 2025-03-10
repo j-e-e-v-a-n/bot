@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>WhatsApp QR Code</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="WhatsApp Bot QR Code Login Page" />
+  <title>WhatsApp QR Code Login</title>
+  
+  <!-- Optional: Favicon -->
+  <link rel="icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" type="image/svg+xml" />
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,83 +20,148 @@
       min-height: 100vh;
       margin: 0;
       background-color: #f0f2f5;
+      color: #333;
     }
+
     .container {
+      width: 90%;
+      max-width: 400px;
       text-align: center;
-      background-color: white;
+      background-color: #ffffff;
       padding: 2rem;
       border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
     }
-    #qrcode {
-      margin: 20px 0;
+
+    h1 {
+      margin-bottom: 1rem;
+      color: #075e54;
     }
+
+    #qrcode img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #eee;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+    }
+
     #status {
-      margin-top: 1rem;
-      padding: 0.5rem;
+      margin-top: 1.5rem;
+      padding: 0.75rem;
       border-radius: 5px;
+      background-color: #ffeeba;
+      color: #856404;
+      font-weight: bold;
+      transition: background-color 0.3s, color 0.3s;
     }
-    .connected {
+
+    #status.connected {
       background-color: #dcf8c6;
       color: #075e54;
     }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #aaa;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <h1>WhatsApp QR Code</h1>
-    <div id="qrcode"></div>
-    <div id="status">Waiting for QR code...</div>
+    <h1>WhatsApp QR Login</h1>
+
+    <!-- QR Code Display Area -->
+    <div id="qrcode">
+      <p>Waiting for QR code...</p>
+    </div>
+
+    <!-- Status Message -->
+    <div id="status">Connecting to server...</div>
   </div>
 
-  <!-- Socket.io client -->
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <script>
-    // Replace with your backend socket server URL
-    const socket = io('https://bot-6p92.onrender.com'); // <- CHANGE THIS URL to your backend Socket URL
+  <footer>
+    Powered by Webloom 🚀
+  </footer>
 
+  <!-- Socket.io client library -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+  <script>
+    // ================================
+    // CONFIGURATION
+    // ================================
+    const SOCKET_SERVER_URL = 'https://bot-6p92.onrender.com';  // <-- Update with your Render backend URL!
+    const HTTP_PING_URL = SOCKET_SERVER_URL + '/ping';          // <-- Optional HTTP endpoint for health checks
+
+    // ================================
+    // DOM ELEMENTS
+    // ================================
     const qrDiv = document.getElementById('qrcode');
     const statusDiv = document.getElementById('status');
 
+    // ================================
+    // SOCKET.IO CONNECTION
+    // ================================
+    const socket = io(SOCKET_SERVER_URL);
+
+    socket.on('connect', () => {
+      console.log('✅ Connected to backend socket:', socket.id);
+      updateStatus('Connected to server. Waiting for QR...', false);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.warn(`❌ Disconnected from backend: ${reason}`);
+      updateStatus('Disconnected from server. Reconnecting...', false);
+    });
+
     socket.on('qr', (qrData) => {
-      qrDiv.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code" style="max-width: 100%; height: auto;">`;
-      statusDiv.textContent = 'Scan this QR code with WhatsApp';
-      statusDiv.className = '';
+      console.log('📲 Received new QR code');
+      qrDiv.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code">`;
+      updateStatus('Scan this QR code with WhatsApp!', false);
     });
 
     socket.on('status', (status) => {
-      statusDiv.textContent = status;
-      if (status === 'WhatsApp Connected') {
-        qrDiv.innerHTML = '';
-        statusDiv.className = 'connected';
+      console.log('ℹ️ Status update:', status);
+
+      if (status.toLowerCase().includes('connected')) {
+        qrDiv.innerHTML = ''; // Clear QR once connected
+        updateStatus(status, true);
+      } else {
+        updateStatus(status, false);
       }
     });
 
-    socket.on('connect', () => {
-      console.log('Connected to backend socket!');
-    });
-
-    // -------------------------
-    // ✅ Render Bot Pinger Code
-    // -------------------------
-
-    const renderBotURL = 'https://bot-6p92.onrender.com'; // <- Your Render bot endpoint (API or root)
-
-    function pingRenderBot() {
-      fetch(renderBotURL)
-        .then(res => {
-          console.log('Ping successful:', res.status);
-        })
-        .catch(err => {
-          console.error('Ping failed:', err.message);
-        });
+    // ================================
+    // STATUS UPDATER FUNCTION
+    // ================================
+    function updateStatus(message, connected = false) {
+      statusDiv.textContent = message;
+      statusDiv.className = connected ? 'connected' : '';
     }
 
-    // Start pinging every 5 minutes (300000 ms)
-    setInterval(pingRenderBot, 5 * 60 * 1000);
+    // ================================
+    // KEEP BACKEND ALIVE WITH PING (Optional)
+    // ================================
+    async function pingRenderBot() {
+      try {
+        const res = await fetch(HTTP_PING_URL);
+        if (res.ok) {
+          console.log(`✅ Ping successful! Status: ${res.status}`);
+        } else {
+          console.warn(`⚠️ Ping returned non-200 status: ${res.status}`);
+        }
+      } catch (err) {
+        console.error('❌ Ping failed:', err.message);
+      }
+    }
 
-    // Optional: Immediately ping once when the page loads
-    pingRenderBot();
+    // Ping every 5 minutes (adjust as needed)
+    setInterval(pingRenderBot, 5 * 60 * 1000);
+    pingRenderBot(); // Immediate ping on load
   </script>
 </body>
 </html>
