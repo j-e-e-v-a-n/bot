@@ -204,10 +204,11 @@ client.on('message', async message => {
         `✅ Hi ${userName}, your order is verified!\n\n` +
         `🛒 Total Amount: ₹${amount}\n\n` +
         `Please pay via the link below or scan the attached QR Code.\n\n` +
-        `👉 ${upiLink}\n\n` +
+        `👉 [Click here to pay]( ${upiLink} )\n\n` + // Markdown link
         `After payment, kindly send the screenshot for confirmation.\n\n` +
         `Thank you for shopping with ${config.BUSINESS_NAME}!`
       );
+      
 
       await message.reply(qrMedia, '', { caption: `📲 Hi ${userName}, scan this QR Code to pay!` });
       return;
