@@ -46,7 +46,8 @@
   <!-- Socket.io client -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script>
-    const socket = io('https://bot-blond-rho.vercel.app'); // <- CHANGE THIS URL
+    // Replace with your backend socket server URL
+    const socket = io('https://bot-6p92.onrender.com'); // <- CHANGE THIS URL to your backend Socket URL
 
     const qrDiv = document.getElementById('qrcode');
     const statusDiv = document.getElementById('status');
@@ -68,6 +69,28 @@
     socket.on('connect', () => {
       console.log('Connected to backend socket!');
     });
+
+    // -------------------------
+    // ✅ Render Bot Pinger Code
+    // -------------------------
+
+    const renderBotURL = 'https://bot-6p92.onrender.com'; // <- Your Render bot endpoint (API or root)
+
+    function pingRenderBot() {
+      fetch(renderBotURL)
+        .then(res => {
+          console.log('Ping successful:', res.status);
+        })
+        .catch(err => {
+          console.error('Ping failed:', err.message);
+        });
+    }
+
+    // Start pinging every 5 minutes (300000 ms)
+    setInterval(pingRenderBot, 5 * 60 * 1000);
+
+    // Optional: Immediately ping once when the page loads
+    pingRenderBot();
   </script>
 </body>
 </html>
