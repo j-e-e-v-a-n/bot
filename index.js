@@ -17,54 +17,62 @@ const io = socketIo(server, {
     }
 });
 
-// Basic authentication for the web interface
+// Setup basic authentication for the web interface
 app.use(basicAuth({
     users: { [config.WEB_USERNAME]: config.WEB_PASSWORD },
     challenge: true
 }));
 
-// Serve QR UI
+// Serve the HTML UI for QR display (optional)
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Health check endpoint
+// Optional: Health check endpoint to ping from Vercel
 app.get('/ping', (req, res) => {
-    console.log('📡 Ping from:', req.ip);
+    console.log('📡 HTTP Ping received from:', req.ip, 'at', new Date().toISOString());
     res.send('✅ Bot is alive!');
 });
 
-// Initialize WhatsApp client with LocalAuth for persistent sessions
+// Initialize WhatsApp client with persistent session
 const client = new Client({
-    authStrategy: new LocalAuth(),   // Persistent login!
+    authStrategy: new LocalAuth({
+        clientId: "whatsapp-bot", // optional identifier
+    }),
     puppeteer: {
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
 });
 
+// Store QR code data globally
 let qrCodeData = null;
 
-// QR code event
+// WhatsApp QR Code Event
 client.on('qr', async (qr) => {
     qrcode.generate(qr, { small: true });
-    console.log('✅ QR Code generated! Scan it.');
+    console.log('✅ QR Code generated. Please scan with WhatsApp.');
 
     try {
         qrCodeData = await QRCode.toDataURL(qr);
         io.emit('qr', qrCodeData);
     } catch (err) {
-        console.error('❌ QR generation failed:', err);
+        console.error('❌ Error generating QR code image:', err);
     }
 });
 
-// Ready event
+// WhatsApp Ready Event
 client.on('ready', () => {
-    console.log('🚀 WhatsApp client is ready!');
+    console.log('🚀 WhatsApp bot is ready!');
     io.emit('status', 'WhatsApp Connected');
 });
 
-// Message event
+// WhatsApp Disconnected Event
+client.on('disconnected', (reason) => {
+    console.log('❌ WhatsApp disconnected:', reason);
+    io.emit('status', 'WhatsApp Disconnected');
+});
+
+// WhatsApp Message Handling
 client.on('message', async (message) => {
     const messageContent = message.body.toLowerCase();
 
@@ -74,8 +82,8 @@ client.on('message', async (message) => {
                 `Thank you for your order at ${config.BUSINESS_NAME}! 🙏\n\n` +
                 `Please complete the payment using the following details:\n\n` +
                 `UPI ID: ${config.UPI_ID}\n\n` +
-                `After payment, send the screenshot here.\n\n` +
-                `For support: ${config.SUPPORT_NUMBER}`
+                `After payment, please send the screenshot of the payment confirmation.\n\n` +
+                `For any queries, contact: ${config.SUPPORT_NUMBER}`
             );
 
             const paymentQR = MessageMedia.fromFilePath(config.PAYMENT_QR_PATH);
@@ -85,55 +93,63 @@ client.on('message', async (message) => {
 
         } catch (error) {
             console.error('❌ Error sending payment details:', error);
-            await message.reply('Sorry! Contact support.');
+            await message.reply('Sorry, there was an error processing your order. Please contact support.');
         }
-    } else if (message.hasMedia) {
+    }
+
+    else if (message.hasMedia) {
         await message.reply(
             "Thank you for the payment confirmation! 🙂\n\n" +
-            "Your order is being processed.\n\n" +
-            `For support, contact: ${config.SUPPORT_NUMBER}`
+            "We are processing your order and will get back to you shortly.\n\n" +
+            `If you have any questions, please contact: ${config.SUPPORT_NUMBER}`
         );
-    } else if (messageContent.includes('hi') || messageContent.includes('hello') || messageContent.includes('hey')) {
+    }
+
+    else if (messageContent.includes('hi') || messageContent.includes('hello') || messageContent.includes('hey')) {
         await message.reply(
             `Welcome to ${config.BUSINESS_NAME}! 👋\n\n` +
-            `Contact support: ${config.SUPPORT_NUMBER}`
+            `For any queries, please contact: ${config.SUPPORT_NUMBER}`
         );
-    } else if (messageContent.includes('query') || messageContent.includes('help') || messageContent.includes('support')) {
+    }
+
+    else if (messageContent.includes('query') || messageContent.includes('help') || messageContent.includes('support')) {
         await message.reply(
-            `Support contact: ${config.SUPPORT_NUMBER}\n\nWe're here to help! 😊`
+            `Please contact our support team at: ${config.SUPPORT_NUMBER}\n\n` +
+            `We're here to help! 😊`
         );
     }
 });
 
-// Initialize the client
+// Initialize the WhatsApp client
 client.initialize();
 
-// Socket.IO handling
+// Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('⚡ Web client connected:', socket.id);
+
     const origin = socket.handshake.headers.origin;
-    console.log('🌐 Origin:', origin);
+    console.log('🌐 Connection origin:', origin);
 
     if (qrCodeData) {
         socket.emit('qr', qrCodeData);
     }
 
     socket.on('ping', (data) => {
-        console.log('🔔 Ping from Vercel:', data);
+        console.log('🔔 Ping received from Vercel:', data);
     });
 
     socket.on('message', (data) => {
-        console.log('💬 Message from Vercel:', data);
+        console.log('💬 Message received from Vercel:', data);
     });
 
     socket.on('disconnect', (reason) => {
-        console.log(`❌ Disconnected: ${socket.id} Reason: ${reason}`);
+        console.log(`❌ Client disconnected: ${socket.id}. Reason: ${reason}`);
     });
 });
 
-// Start the server
+// Start server
 server.listen(config.PORT, () => {
     console.log(`✅ Server running on port ${config.PORT}`);
 });
 
-console.log('🚀 WhatsApp bot starting...');
+console.log('🚀 WhatsApp bot is starting...');
