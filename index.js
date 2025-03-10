@@ -12,6 +12,9 @@ const fs = require('fs');
 const config = require('./config');
 const products = JSON.parse(fs.readFileSync('./products.json', 'utf-8'));
 
+// Orders file path
+const ordersFilePath = './orders.json';
+
 // Express Setup
 const app = express();
 const server = http.createServer(app);
@@ -107,9 +110,9 @@ function parseOrder(messageText) {
 
   return {
     orderDetails,
-    subtotal: parseInt(subtotal),
-    shipping: parseInt(shipping),
-    total: parseInt(total)
+    subtotal: parseInt(subtotal) || 0,
+    shipping: parseInt(shipping) || 0,
+    total: parseInt(total) || 0
   };
 }
 
@@ -173,10 +176,34 @@ async function generateUpiQr(amount) {
   return await QRCode.toDataURL(link);
 }
 
+// Function: Save Order to File
+function saveOrder(order, userName) {
+  let orders = [];
+
+  try {
+    if (fs.existsSync(ordersFilePath)) {
+      orders = JSON.parse(fs.readFileSync(ordersFilePath, 'utf-8'));
+    }
+  } catch (err) {
+    console.error('❌ Failed to read orders file:', err);
+  }
+
+  orders.push({
+    timestamp: new Date().toISOString(),
+    customer: userName,
+    ...order
+  });
+
+  try {
+    fs.writeFileSync(ordersFilePath, JSON.stringify(orders, null, 2));
+  } catch (err) {
+    console.error('❌ Failed to save order:', err);
+  }
+}
+
 // WhatsApp Message Handler
 client.on('message', async message => {
-  // ✅ Get user's name (pushName is more reliable)
-  const userName = message._data?.notifyName || message._data?.pushName || 'there';
+  const userName = message.notifyName || message.pushName || 'there';
   const msg = message.body.toLowerCase();
 
   try {
@@ -187,11 +214,7 @@ client.on('message', async message => {
 
       if (!validation.valid) {
         console.log(`❌ Validation Failed: ${validation.reason}`);
-        await message.reply(
-          `Hi ${userName},\n\n` +
-          `${validation.reason}\n\n` +
-          `⚠️ Please ensure the order is correct.`
-        );
+        await message.reply(`Hi ${userName},\n\n${validation.reason}\n\n⚠️ Please ensure the order is correct.`);
         return;
       }
 
@@ -200,34 +223,51 @@ client.on('message', async message => {
       const qrCodeBase64 = await generateUpiQr(amount);
       const qrMedia = new MessageMedia('image/png', qrCodeBase64.split(',')[1]);
 
+      saveOrder(order, userName);
+
+      // Notify Customer
       await message.reply(
         `✅ Hi ${userName}, your order is verified!\n\n` +
         `🛒 Total Amount: ₹${amount}\n\n` +
         `Please pay via the link below or scan the attached QR Code.\n\n` +
-        `👉 [Click here to pay]( ${upiLink} )\n\n` + // Markdown link
+        `👉 *Click here to pay:* ${upiLink}\n\n` +
         `After payment, kindly send the screenshot for confirmation.\n\n` +
         `Thank you for shopping with ${config.BUSINESS_NAME}!`
       );
-      
 
+      // Send QR Code
       await message.reply(qrMedia, '', { caption: `📲 Hi ${userName}, scan this QR Code to pay!` });
+
+      // Forward Order Message to Admin
+      const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
+      await client.sendMessage(adminNumber, `📦 *New Order from ${userName}*\n\n${message.body}`);
+
       return;
     }
 
     // Payment Screenshot Detection
     if (message.hasMedia) {
       console.log(`✅ Payment screenshot received from ${userName}.`);
+
+      const media = await message.downloadMedia();
+      const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
+
+      await client.sendMessage(adminNumber, media, {
+        caption: `💸 Payment screenshot from ${userName}`
+      });
+
       await message.reply(
         `✅ Hi ${userName}, payment screenshot received!\n\n` +
         `🎉 Your order is now being processed!\n\n` +
         `We will notify you once it's shipped.\n\n` +
         `Need help? Contact: ${config.SUPPORT_NUMBER}`
       );
+
       return;
     }
 
-    // Greetings
-    if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
+    // Greetings Handler
+    if (/hi|hello|hey/gi.test(msg)) {
       await message.reply(
         `👋 Hi ${userName}, welcome to ${config.BUSINESS_NAME}!\n\n` +
         `How can we help you today?\n\n` +
@@ -235,11 +275,33 @@ client.on('message', async message => {
         `For support, contact: ${config.SUPPORT_NUMBER}`
       );
     }
+
   } catch (err) {
     console.error(`❌ Error handling message from ${userName}:`, err);
     await message.reply(`⚠️ Hi ${userName}, something went wrong. Please try again later!`);
   }
 });
+
+// Weekly task to send orders.json to admin
+const oneWeek = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
+
+setInterval(async () => {
+  if (fs.existsSync(ordersFilePath)) {
+    try {
+      const fileData = fs.readFileSync(ordersFilePath);
+      const base64Data = fileData.toString('base64');
+
+      const media = new MessageMedia('application/json', base64Data, 'orders.json');
+
+      const adminNumber = `${config.ADMIN_NUMBER}@c.us`;
+      await client.sendMessage(adminNumber, media, { caption: '📁 Weekly Orders Backup' });
+
+      console.log('✅ Weekly orders.json sent to admin');
+    } catch (err) {
+      console.error('❌ Failed to send weekly orders.json:', err);
+    }
+  }
+}, oneWeek);
 
 // Initialize WhatsApp Client
 client.initialize();

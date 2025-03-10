@@ -6,6 +6,7 @@ module.exports = {
     SUPPORT_NUMBER: '+91 9999999999',      // Customer support number in replies
     PAYMENT_QR_PATH: './resume.png',       // Static QR image path (fallback or default)
     SHIPPING_COST: 99,                     // Preset shipping cost (add to order total)
+    ADMIN_NUMBERS: ['918113064544', '918089554476'], // The number to forward orders/screenshots (no +)
     PORT: process.env.PORT || 5000         // Server port for web interface / socket.io
   };
   
