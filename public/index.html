@@ -91,21 +91,12 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
   <script>
-    // ================================
-    // CONFIGURATION
-    // ================================
-    const SOCKET_SERVER_URL = 'https://bot-6p92.onrender.com';  // <-- Update with your Render backend URL!
-    const HTTP_PING_URL = SOCKET_SERVER_URL + '/ping';          // <-- Optional HTTP endpoint for health checks
+    const SOCKET_SERVER_URL = 'https://bot-6p92.onrender.com'; // Your backend server
+    const HTTP_PING_URL = `${SOCKET_SERVER_URL}/ping`;
 
-    // ================================
-    // DOM ELEMENTS
-    // ================================
     const qrDiv = document.getElementById('qrcode');
     const statusDiv = document.getElementById('status');
 
-    // ================================
-    // SOCKET.IO CONNECTION
-    // ================================
     const socket = io(SOCKET_SERVER_URL);
 
     socket.on('connect', () => {
@@ -114,54 +105,42 @@
     });
 
     socket.on('disconnect', (reason) => {
-      console.warn(`❌ Disconnected from backend: ${reason}`);
-      updateStatus('Disconnected from server. Reconnecting...', false);
+      console.warn(`❌ Disconnected: ${reason}`);
+      updateStatus('Disconnected from server. Trying to reconnect...', false);
     });
 
     socket.on('qr', (qrData) => {
-      console.log('📲 Received new QR code');
+      console.log('📲 New QR code received');
       qrDiv.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code">`;
       updateStatus('Scan this QR code with WhatsApp!', false);
     });
 
     socket.on('status', (status) => {
       console.log('ℹ️ Status update:', status);
-
       if (status.toLowerCase().includes('connected')) {
-        qrDiv.innerHTML = ''; // Clear QR once connected
+        qrDiv.innerHTML = '<p>WhatsApp Connected ✅</p>';
         updateStatus(status, true);
       } else {
         updateStatus(status, false);
       }
     });
 
-    // ================================
-    // STATUS UPDATER FUNCTION
-    // ================================
     function updateStatus(message, connected = false) {
       statusDiv.textContent = message;
       statusDiv.className = connected ? 'connected' : '';
     }
 
-    // ================================
-    // KEEP BACKEND ALIVE WITH PING (Optional)
-    // ================================
-    async function pingRenderBot() {
+    async function pingServer() {
       try {
         const res = await fetch(HTTP_PING_URL);
-        if (res.ok) {
-          console.log(`✅ Ping successful! Status: ${res.status}`);
-        } else {
-          console.warn(`⚠️ Ping returned non-200 status: ${res.status}`);
-        }
+        console.log(`✅ Ping successful! (${res.status})`);
       } catch (err) {
         console.error('❌ Ping failed:', err.message);
       }
     }
 
-    // Ping every 5 minutes (adjust as needed)
-    setInterval(pingRenderBot, 5 * 60 * 1000);
-    pingRenderBot(); // Immediate ping on load
+    setInterval(pingServer, 5 * 60 * 1000);
+    pingServer();
   </script>
 </body>
 </html>
