@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp QR Code</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            text-align: center;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #qrcode {
+            margin: 20px 0;
+        }
+        #status {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 5px;
+        }
+        .connected {
+            background-color: #dcf8c6;
+            color: #075e54;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WhatsApp QR Code</h1>
+        <div id="qrcode"></div>
+        <div id="status">Waiting for QR code...</div>
+    </div>
+
+    <script>
+        const socket = io();
+        const qrDiv = document.getElementById('qrcode');
+        const statusDiv = document.getElementById('status');
+
+        socket.on('qr', (qrData) => {
+            qrDiv.innerHTML = `<img src="${qrData}" alt="WhatsApp QR Code">`;
+            statusDiv.textContent = 'Scan this QR code with WhatsApp';
+            statusDiv.className = '';
+        });
+
+        socket.on('status', (status) => {
+            statusDiv.textContent = status;
+            if (status === 'WhatsApp Connected') {
+                qrDiv.innerHTML = '';
+                statusDiv.className = 'connected';
+            }
+        });
+    </script>
+</body>
+</html>

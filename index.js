@@ -1,17 +1,53 @@
 const { Client, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const express = require('express');
+const basicAuth = require('express-basic-auth');
+const QRCode = require('qrcode');
 const config = require('./config');
+const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
 
+// Initialize Express app
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
+// Setup basic authentication
+app.use(basicAuth({
+    users: { [config.WEB_USERNAME]: config.WEB_PASSWORD },
+    challenge: true
+}));
+
+// Serve static HTML
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Initialize WhatsApp client
 const client = new Client();
 
-// QR Code generation for initial WhatsApp Web setup
-client.on('qr', (qr) => {
+// Store QR code data
+let qrCodeData = null;
+
+// QR Code generation
+client.on('qr', async (qr) => {
+    // Generate QR in terminal
     qrcode.generate(qr, { small: true });
     console.log('QR Code generated. Please scan with WhatsApp.');
+
+    // Generate QR for web interface
+    try {
+        qrCodeData = await QRCode.toDataURL(qr);
+        io.emit('qr', qrCodeData);
+    } catch (err) {
+        console.error('QR Code generation error:', err);
+    }
 });
 
 client.on('ready', () => {
     console.log('WhatsApp bot is ready!');
+    io.emit('status', 'WhatsApp Connected');
 });
 
 client.on('message', async (message) => {
@@ -65,5 +101,18 @@ client.on('message', async (message) => {
 
 // Initialize the client
 client.initialize();
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    console.log('Web client connected');
+    if (qrCodeData) {
+        socket.emit('qr', qrCodeData);
+    }
+});
+
+// Start server
+server.listen(config.PORT, () => {
+    console.log(`Server running on port ${config.PORT}`);
+});
 
 console.log('WhatsApp bot is starting...');
