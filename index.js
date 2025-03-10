@@ -81,7 +81,6 @@ function parseOrder(messageText) {
   let total = '';
 
   lines.forEach(line => {
-    // Product Line Example: - Product Name x 2 = ₹200 (ID-123)
     const match = line.match(/-(.+?) x (\d+) = ₹(\d+).*?(\b\w{2,}-\d{3,}\b)/);
     if (match) {
       const [, name, quantity, price, id] = match;
@@ -165,7 +164,7 @@ function validateOrder(order) {
 
 // Function: Generate UPI Link
 function generateUpiLink(amount) {
-  return `upi://pay?pa=${config.UPI_ID}&pn=${config.BUSINESS_NAME}&am=${amount}&cu=INR`;
+  return `upi://pay?pa=${config.UPI_ID}&pn=${encodeURIComponent(config.BUSINESS_NAME)}&am=${amount}&cu=INR`;
 }
 
 // Function: Generate UPI QR (Base64 Image)
@@ -176,6 +175,8 @@ async function generateUpiQr(amount) {
 
 // WhatsApp Message Handler
 client.on('message', async message => {
+  // ✅ Get user's name (pushName is more reliable)
+  const userName = message._data?.notifyName || message._data?.pushName || 'there';
   const msg = message.body.toLowerCase();
 
   try {
@@ -186,7 +187,11 @@ client.on('message', async message => {
 
       if (!validation.valid) {
         console.log(`❌ Validation Failed: ${validation.reason}`);
-        await message.reply(`${validation.reason}\n\n⚠️ Please ensure the order is correct.`);
+        await message.reply(
+          `Hi ${userName},\n\n` +
+          `${validation.reason}\n\n` +
+          `⚠️ Please ensure the order is correct.`
+        );
         return;
       }
 
@@ -196,7 +201,7 @@ client.on('message', async message => {
       const qrMedia = new MessageMedia('image/png', qrCodeBase64.split(',')[1]);
 
       await message.reply(
-        `✅ Order Verified!\n\n` +
+        `✅ Hi ${userName}, your order is verified!\n\n` +
         `🛒 Total Amount: ₹${amount}\n\n` +
         `Please pay via the link below or scan the attached QR Code.\n\n` +
         `👉 ${upiLink}\n\n` +
@@ -204,15 +209,15 @@ client.on('message', async message => {
         `Thank you for shopping with ${config.BUSINESS_NAME}!`
       );
 
-      await message.reply(qrMedia, '', { caption: '📲 Scan this QR Code to pay!' });
+      await message.reply(qrMedia, '', { caption: `📲 Hi ${userName}, scan this QR Code to pay!` });
       return;
     }
 
     // Payment Screenshot Detection
     if (message.hasMedia) {
-      console.log('✅ Payment screenshot received.');
+      console.log(`✅ Payment screenshot received from ${userName}.`);
       await message.reply(
-        `✅ Payment screenshot received!\n\n` +
+        `✅ Hi ${userName}, payment screenshot received!\n\n` +
         `🎉 Your order is now being processed!\n\n` +
         `We will notify you once it's shipped.\n\n` +
         `Need help? Contact: ${config.SUPPORT_NUMBER}`
@@ -223,15 +228,15 @@ client.on('message', async message => {
     // Greetings
     if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
       await message.reply(
-        `👋 Welcome to ${config.BUSINESS_NAME}!\n\n` +
+        `👋 Hi ${userName}, welcome to ${config.BUSINESS_NAME}!\n\n` +
         `How can we help you today?\n\n` +
         `For order queries, share your order details.\n\n` +
         `For support, contact: ${config.SUPPORT_NUMBER}`
       );
     }
   } catch (err) {
-    console.error('❌ Error handling message:', err);
-    await message.reply('⚠️ Something went wrong. Please try again later!');
+    console.error(`❌ Error handling message from ${userName}:`, err);
+    await message.reply(`⚠️ Hi ${userName}, something went wrong. Please try again later!`);
   }
 });
 
