@@ -1,4 +1,4 @@
-const { Client, MessageMedia } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const express = require('express');
 const basicAuth = require('express-basic-auth');
@@ -13,7 +13,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: '*', // adjust this if you want to restrict Vercel domain
+        origin: '*',
     }
 });
 
@@ -34,8 +34,15 @@ app.get('/ping', (req, res) => {
     res.send('✅ Bot is alive!');
 });
 
-// Initialize WhatsApp client
-const client = new Client();
+// Initialize WhatsApp client with persistent session
+const client = new Client({
+    authStrategy: new LocalAuth({
+        clientId: "whatsapp-bot", // optional identifier
+    }),
+    puppeteer: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
 
 // Store QR code data globally
 let qrCodeData = null;
@@ -59,11 +66,16 @@ client.on('ready', () => {
     io.emit('status', 'WhatsApp Connected');
 });
 
+// WhatsApp Disconnected Event
+client.on('disconnected', (reason) => {
+    console.log('❌ WhatsApp disconnected:', reason);
+    io.emit('status', 'WhatsApp Disconnected');
+});
+
 // WhatsApp Message Handling
 client.on('message', async (message) => {
     const messageContent = message.body.toLowerCase();
 
-    // Order message
     if (messageContent.includes('order details:') && messageContent.includes('customer details:')) {
         try {
             await message.reply(
@@ -85,7 +97,6 @@ client.on('message', async (message) => {
         }
     }
 
-    // Payment confirmation (media)
     else if (message.hasMedia) {
         await message.reply(
             "Thank you for the payment confirmation! 🙂\n\n" +
@@ -94,7 +105,6 @@ client.on('message', async (message) => {
         );
     }
 
-    // General greetings
     else if (messageContent.includes('hi') || messageContent.includes('hello') || messageContent.includes('hey')) {
         await message.reply(
             `Welcome to ${config.BUSINESS_NAME}! 👋\n\n` +
@@ -102,7 +112,6 @@ client.on('message', async (message) => {
         );
     }
 
-    // Support query
     else if (messageContent.includes('query') || messageContent.includes('help') || messageContent.includes('support')) {
         await message.reply(
             `Please contact our support team at: ${config.SUPPORT_NUMBER}\n\n` +
@@ -118,21 +127,17 @@ client.initialize();
 io.on('connection', (socket) => {
     console.log('⚡ Web client connected:', socket.id);
 
-    // Optional: Log origin (not always reliable with CORS)
     const origin = socket.handshake.headers.origin;
     console.log('🌐 Connection origin:', origin);
 
-    // Send the QR code if it's already generated
     if (qrCodeData) {
         socket.emit('qr', qrCodeData);
     }
 
-    // Listen for pings from the Vercel frontend
     socket.on('ping', (data) => {
         console.log('🔔 Ping received from Vercel:', data);
     });
 
-    // Listen for any custom messages from the Vercel frontend
     socket.on('message', (data) => {
         console.log('💬 Message received from Vercel:', data);
     });
