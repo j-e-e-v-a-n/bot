@@ -70,7 +70,7 @@ async function loadProducts() {
     const db = getDB();
     const productsCollection = db.collection(productsCollectionName);
     products = await productsCollection.find({}).toArray();
-    console.log(`✅ Loaded ${products.length} products:`, products); // Log the loaded products
+    console.log(`✅ Products Loaded `); // Log the loaded products
 }
 
 // ✅ Load custom messages
@@ -256,9 +256,6 @@ async function parseOrder(messageText) {
 
 async function validateOrder(order) {
     let calculatedSubtotal = 0;
-
-    console.log('Available products:', products); // Log available products
-
     for (const item of order.orderDetails) {
         console.log(`Validating item: ${item.name} (ID: ${item.id})`);
         const product = products.find(p => 
