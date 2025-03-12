@@ -903,7 +903,24 @@ client.on('message', async (message) => {
     const msg = message.body.trim().toLowerCase();
 
     // Remove the '@c.us' suffix to store the phone number correctly
-    const cleanedPhoneNumber = phoneNumber.replace('@c.us', '');
+    const cleanedPhoneNumber = phoneNumber.replace('@c.us', ''); // Clean the phone number
+
+if (cleanedPhoneNumber.endsWith('@c.us')) {
+    // If the phone number is from an individual user, proceed to add it
+    const existingEntry = await userPhonesCollection.findOne({ phones: cleanedPhoneNumber });
+
+    if (!existingEntry) {
+        // If the phone number does not exist, add it to the collection
+        await userPhonesCollection.updateOne(
+            { phones: { $ne: cleanedPhoneNumber } }, // Ensure we don't duplicate
+            { $addToSet: { phones: cleanedPhoneNumber } }, // Add the phone number to the array
+            { upsert: true } // Create a new document if no match is found
+        );
+        console.log(`✅ Added new phone number to userPhones: ${cleanedPhoneNumber}`);
+    }
+} else {
+    console.log(`⚠️ Ignored group message from: ${phoneNumber}`);
+}
 
     try {
         // Check if the phone number exists in the userPhones collection
