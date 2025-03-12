@@ -1,7 +1,0 @@
-{
-  "welcome": "👋 Welcome to {businessName}! How can we assist you today?",
-  "orderConfirmed": "✅ Hi {customerName}, your order is verified!\n\n🛒 *Total*: ₹{amount}\n\n👉 *Pay Now:* {upiLink}\n\n📸 Share payment screenshot after payment.\n\nThank you for choosing {businessName}!",
-  "paymentReceived": "✅ Hi {customerName}, payment received!\n\n🎉 Order processing started. We will notify you upon shipping.\n\nFor help, contact: {supportNumber}",
-  "shippingInfo": "🚚 *Shipping Information*\n\n- Free shipping on orders above ₹{freeShippingAmount}\n- Standard shipping: ₹{shippingCost}\n- Delivery within 3-5 business days\n- Currently shipping to all major cities in India",
-  "orderTracking": "📦 *Order Tracking*\n\nTo track your order, please send your order ID in this format:\n\n*track:* [your order ID]"
-}
