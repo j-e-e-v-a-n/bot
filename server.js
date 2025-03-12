@@ -3,19 +3,27 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { connectDB, getDB } from '../models/db.js'; // Import your connectDB and getDB functions
-import data from '../models/data.js'; // Import your data model functions
-import { sendMessageToUser  } from '../utils/sendMessage.js'; // Utility function to send messages
-import { client } from '../index.js';
-import http from 'http';
+import whatsappWeb from 'whatsapp-web.js'; // Import the entire module
+import { connectDB, getDB } from './models/db.js'; // Import your connectDB and getDB functions
+import data from './models/data.js'; // Import your data model functions
+import { sendMessageToUser  } from './utils/sendMessage.js'; // Utility function to send messages
+
+const { Client, MessageMedia, LocalAuth } = whatsappWeb;
 
 
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    },
+    });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const port = 3000;
+const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
