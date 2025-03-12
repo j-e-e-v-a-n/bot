@@ -7,7 +7,7 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': {
-                target: 'http://localhost:3000', // Your Express server
+                target: 'https://bot-ir83.onrender.com/', // Your Express server
                 changeOrigin: true,
                 secure: false,
             },

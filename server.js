@@ -30,6 +30,11 @@ app.use(express.json());
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 
+// Default route (respond with JSON)
+app.get('/', (req, res) => {
+    res.json({ message: 'Server is working!' }); // Respond with a JSON message
+});
+
 
 
 // Connect to the database

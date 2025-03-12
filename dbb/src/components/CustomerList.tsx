@@ -8,7 +8,7 @@ const CustomersList = () => {
     useEffect(() => {
         const fetchCustomers = async () => {
             try {
-                const response = await fetch('http://localhost:3000/api/customers');
+                const response = await fetch('https://bot-ir83.onrender.com/api/customers');
                 if (!response.ok) {
                     throw new Error('Failed to fetch customers');
                 }

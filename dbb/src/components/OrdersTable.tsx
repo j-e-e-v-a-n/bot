@@ -72,7 +72,7 @@ const OrdersTable: React.FC<Props> = ({ orders, onOrderUpdate }) => {
 
   const sendMessageToCustomer = async (customerPhone: string, message: string) => {
     try {
-      const response = await fetch('http://localhost:3000/api/send-message', {
+      const response = await fetch('https://bot-ir83.onrender.com/api/send-message', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
