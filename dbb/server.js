@@ -3,10 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { connectDB, getDB } from '../models/db.js'; // Import your connectDB and getDB functions
-import data from '../models/data.js'; // Import your data model functions
-import { sendMessageToUser  } from '../utils/sendMessage.js'; // Utility function to send messages
-import { client } from '../index.js';
+import { connectDB, getDB } from './models/db.js'; // Import your connectDB and getDB functions
+import data from './models/data.js'; // Import your data model functions
+import { sendMessageToUser  } from './utils/sendMessage.js'; // Utility function to send messages
+import { client } from './index.js';
 import http from 'http';
 
 
