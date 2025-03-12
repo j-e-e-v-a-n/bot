@@ -309,8 +309,8 @@ app.put('/api/orders/:id', async (req, res) => {
       });
 
       // Start the server
-      app.listen(port, () => {
-          console.log(`Server running at http://localhost:${port}`);
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server is running on port ${PORT}`);
       });
   } catch (error) {
       console.error('❌ Failed to connect to the database:', error);
