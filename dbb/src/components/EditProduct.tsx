@@ -1,11 +1,10 @@
-// EditProduct.tsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../api/config';
 
 const EditProduct = () => {
-    const { id } = useParams(); // Get the product ID from the URL
-    const navigate = useNavigate(); // Hook for navigation
+    const { id } = useParams();
+    const navigate = useNavigate();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -15,6 +14,7 @@ const EditProduct = () => {
         category: '',
         inStock: false,
         description: '',
+        imageUrl: '',
     });
 
     useEffect(() => {
@@ -35,6 +35,7 @@ const EditProduct = () => {
                 category: data.category,
                 inStock: data.inStock,
                 description: data.description,
+                imageUrl: data.imageUrl || '',
             });
         } catch (error) {
             console.error('Error fetching product:', error);
@@ -66,7 +67,7 @@ const EditProduct = () => {
                 throw new Error('Failed to update product');
             }
             alert('Product updated successfully!');
-            navigate('/products'); // Redirect to the product list after successful update
+            navigate('/products');
         } catch (error) {
             console.error('Error updating product:', error);
             setError('Failed to update product');
@@ -111,6 +112,16 @@ const EditProduct = () => {
                         onChange={handleChange}
                         className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-500"
                         required
+                    />
+                </div>
+                <div className="mb-4">
+                    <label className="block text-gray-700">Image URL:</label>
+                    <input
+                        type="url"
+                        name="imageUrl"
+                        value={formData.imageUrl}
+                        onChange={handleChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-500"
                     />
                 </div>
                 <div className="mb-4">

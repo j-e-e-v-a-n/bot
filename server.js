@@ -156,100 +156,100 @@ app.put('/api/orders/:id', async (req, res) => {
         res.status(500).json({ detail: 'Internal Server Error' });
     }
 });
-        // Add Product
-        app.post('/api/products', async (req, res) => {
-            const { id, name, price, category, inStock, description } = req.body;
+// Add Product
+app.post('/api/products', async (req, res) => {
+    const { id, name, price, category, inStock, description, imageUrl } = req.body;
 
-            // Validate input
-            if (!id || !name || !price || !category) {
-                return res.status(400).json({ error: 'ID, name, price, and category are required.' });
-            }
+    // Validate input
+    if (!id || !name || !price || !category) {
+        return res.status(400).json({ error: 'ID, name, price, and category are required.' });
+    }
 
-            // Convert price to an integer
+    // Convert price to an integer
+    const priceInt = parseInt(price, 10);
+    if (isNaN(priceInt)) {
+        return res.status(400).json({ error: 'Price must be a valid number.' });
+    }
+
+    try {
+        const newProduct = {
+            id,
+            name,
+            price: priceInt,
+            inStock: inStock || false,
+            category,
+            imageUrl,
+            description
+        };
+
+        await data.addProduct(newProduct);
+        res.status(201).json({ message: 'Product added successfully.' });
+    } catch (error) {
+        console.error('Error adding product:', error);
+        res.status(500).json({ error: 'Failed to add product' });
+    }
+});
+
+// Get Products
+app.get('/api/products', async (req, res) => {
+    try {
+        const products = await data.getProducts();
+        res.json(products);
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// Edit Product
+app.get('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const product = await data.getProductById(id);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        res.json(product);
+    } catch (error) {
+        console.error('Error fetching product:', error);
+        res.status(500).json({ error: 'Failed to fetch product' });
+    }
+});
+
+app.put('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, price, category, inStock, description, imageUrl } = req.body;
+
+    // Validate input
+    if (!name && !price && !category) {
+        return res.status(400).json({ error: 'At least one field (name, price, category) must be provided.' });
+    }
+
+    try {
+        const updatedProduct = {};
+        if (name) updatedProduct.name = name;
+
+        // Convert price to an integer if provided
+        if (price !== undefined) {
             const priceInt = parseInt(price, 10);
             if (isNaN(priceInt)) {
                 return res.status(400).json({ error: 'Price must be a valid number.' });
             }
+            updatedProduct.price = priceInt;
+        }
 
-            try {
-                const newProduct = {
-                    id, // Include the item code (ID)
-                    name,
-                    price: priceInt, // Store price as an integer
-                    inStock: inStock || false, // Default to false if not provided
-                    category,
-                };
+        if (category) updatedProduct.category = category;
+        if (inStock !== undefined) updatedProduct.inStock = inStock;
+        if (description) updatedProduct.description = description;
+        if (imageUrl) updatedProduct.imageUrl = imageUrl;
 
-                await data.addProduct(newProduct); // Ensure this function is defined correctly
-                res.status(201).json({ message: 'Product added successfully.' });
-            } catch (error) {
-                console.error('Error adding product:', error);
-                res.status(500).json({ error: 'Failed to add product' });
-            }
-        });
-
-        
-
-
-        // Get Products
-        app.get('/api/products', async (req, res) => {
-            try {
-                const products = await data.getProducts(); // Ensure this function is defined correctly
-                res.json(products);
-            } catch (error) {
-                console.error('Error fetching products:', error);
-                res.status(500).json({ error: 'Failed to fetch products' });
-            }
-        });
-
-        // Edit Product
-        app.get('/api/products/:id', async (req, res) => {
-            const { id } = req.params;
-            try {
-                const product = await data.getProductById(id); // Ensure this function is defined correctly
-                if (!product) {
-                    return res.status(404).json({ error: 'Product not found' });
-                }
-                res.json(product);
-            } catch (error) {
-                console.error('Error fetching product:', error);
-                res.status(500).json({ error: 'Failed to fetch product' });
-            }
-        });
-
-        app.put('/api/products/:id', async (req, res) => {
-            const { id } = req.params;
-            const { name, price, category, inStock, description } = req.body;
-
-            // Validate input
-            if (!name && !price && !category) {
-                return res.status(400).json({ error: 'At least one field (name, price, category) must be provided.' });
-            }
-
-            try {
-                const updatedProduct = {};
-                if (name) updatedProduct.name = name;
-
-                // Convert price to an integer if provided
-                if (price !== undefined) {
-                    const priceInt = parseInt(price, 10);
-                    if (isNaN(priceInt)) {
-                        return res.status(400).json({ error: 'Price must be a valid number.' });
-                    }
-                    updatedProduct.price = priceInt; // Store price as an integer
-                }
-
-                if (category) updatedProduct.category = category;
-                if (inStock !== undefined) updatedProduct.inStock = inStock; // Allow boolean
-                if (description) updatedProduct.description = description;
-
-                await data.updateProduct(id, updatedProduct); // Ensure this function is defined correctly
-                res.json({ message: 'Product updated successfully.' });
-            } catch (error) {
-                console.error('Error updating product:', error);
-                res.status(500).json({ error: 'Failed to update product' });
-            }
-        });
+        await data.updateProduct(id, updatedProduct);
+        res.json({ message: 'Product updated successfully.' });
+    } catch (error) {
+        console.error('Error updating product:', error);
+        res.status(500).json({ error: 'Failed to update product' });
+    }
+});
 
         // Remove Product
         app.delete('/api/products/:id', async (req, res) => {

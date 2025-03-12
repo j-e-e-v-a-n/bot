@@ -1,13 +1,14 @@
-// AddProduct.js
 import React, { useState } from 'react';
 import { API_ENDPOINTS } from '../api/config';
 
 const AddProduct = ({ onProductUpdate }) => {
-    const [itemCode, setItemCode] = useState(''); // For the product ID (e.g., "TG-002")
+    const [itemCode, setItemCode] = useState('');
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [category, setCategory] = useState('');
     const [inStock, setInStock] = useState(false);
+    const [imageUrl, setImageUrl] = useState('');
+    const [description, setDescription] = useState('');
     const [error, setError] = useState(null);
 
     const handleSubmit = async (e) => {
@@ -17,21 +18,25 @@ const AddProduct = ({ onProductUpdate }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    id: itemCode, // Use the item code as the product ID
+                    id: itemCode,
                     name,
                     price,
                     category,
                     inStock,
+                    imageUrl,
+                    description,
                 }),
             });
             if (!response.ok) throw new Error('Failed to add product');
-            onProductUpdate(); // Refresh the product list
+            onProductUpdate();
             // Reset form fields
             setItemCode('');
             setName('');
             setPrice('');
             setCategory('');
             setInStock(false);
+            setImageUrl('');
+            setDescription('');
         } catch (error) {
             setError(error.message);
         }
@@ -83,6 +88,26 @@ const AddProduct = ({ onProductUpdate }) => {
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                         required
+                        className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-500"
+                    />
+                </div>
+                <div className="mb-4">
+                    <label className="block text-gray-700">Description:</label>
+                    <textarea
+                        placeholder="Enter product description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={4}
+                        className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-500"
+                    />
+                </div>
+                <div className="mb-4">
+                    <label className="block text-gray-700">Image URL:</label>
+                    <input
+                        type="url"
+                        placeholder="Enter image URL"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
                         className="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring focus:ring-blue-500"
                     />
                 </div>
