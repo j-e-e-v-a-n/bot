@@ -8,7 +8,6 @@ import data from '../models/data.js'; // Import your data model functions
 import { sendMessageToUser  } from '../utils/sendMessage.js'; // Utility function to send messages
 import { client } from '../index.js';
 import http from 'http';
-import { Server } from 'socket.io';
 
 
 
@@ -22,13 +21,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
-const server = http.createServer(app);
-const io = new Server(server);
-
-io.on('connection', (socket) => {
-    console.log('A user connected');
-    socket.emit('message', 'Hello from server!'); // Send a test message
-});
 
 
 
