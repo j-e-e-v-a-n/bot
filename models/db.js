@@ -1,16 +1,12 @@
-// models/db.js
-const { MongoClient } = require('mongodb');
+import { MongoClient } from 'mongodb';
 
-// Replace with your MongoDB URI
-const uri = 'mongodb+srv://user:ADhL0KH37CX52xV2@cluster0.cvupke0.mongodb.net'; // Change this to your MongoDB connection string
-const client = new MongoClient(uri);
+const client = new MongoClient('mongodb://localhost:27017');
+let db = null;
 
-let db;
-
-async function connectDB() {
+export async function connectDB() {
     try {
         await client.connect();
-        db = client.db('whatsappBot'); // Use your database name
+        db = client.db('whatsappBot');
         console.log('✅ Connected to MongoDB');
     } catch (err) {
         console.error('❌ MongoDB connection error:', err.message);
@@ -18,11 +14,9 @@ async function connectDB() {
     }
 }
 
-function getDB() {
+export function getDB() {
     if (!db) {
         throw new Error('Database not initialized. Call connectDB() first.');
     }
     return db;
 }
-
-module.exports = { connectDB, getDB };

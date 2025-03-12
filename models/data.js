@@ -1,4 +1,5 @@
-const { getDB } = require('./db');
+import { getDB } from './db.js';
+
 
 const ordersCollectionName = 'orders';
 const customersCollectionName = 'customers';
@@ -111,7 +112,8 @@ const removeProduct = async (id) => {
     await productsCollection.deleteOne({ id });
 };
 
-module.exports = {
+// Replace module.exports with export default
+export default {
     loadProducts,
     saveOrder,
     getOrderById,

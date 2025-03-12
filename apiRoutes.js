@@ -1,8 +1,11 @@
-const express = require('express');
+import express from 'express';
+import moment from 'moment';
+import { getDB } from './models/db.js';
+import { sendMessageToUser } from './utils/sendMessage.js';
+import * as data from './models/data.js'; // since you're using data.getSettings() later
+
 const router = express.Router();
-const { getDB } = require('./models/db'); // Adjust the path as necessary
-const moment = require('moment'); // Ensure moment is installed
-const { sendMessageToUser  } = require('./utils/sendMessage'); // Import the sendMessageToUser  function
+
 
 // API route for fetching orders
 router.get('/orders', async (req, res) => {
@@ -80,4 +83,4 @@ router.post('/send-message', async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;
