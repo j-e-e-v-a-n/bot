@@ -1,41 +1,81 @@
-// ✅ Required Modules
-const { Client, MessageMedia, LocalAuth, Buttons, List } = require('whatsapp-web.js');
-const qrcodeTerminal = require('qrcode-terminal');
-const QRCode = require('qrcode');
-const express = require('express');
-const path = require('path');
-const http = require('http');
-const socketIo = require('socket.io');
-const fs = require('fs');
-const cron = require('node-cron');
-const moment = require('moment');
-const { connectDB, getDB } = require('./db'); // Import MongoDB connection
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io'; // Import Socket.IO
+import whatsappWeb from 'whatsapp-web.js'; // Import the entire module
+import qrcodeTerminal from 'qrcode-terminal';
+import QRCode from 'qrcode';
+import path, { dirname } from 'path'; // Import dirname from path
+import { fileURLToPath } from 'url'; // Import fileURLToPath from url
+import fs from 'fs';
+import cron from 'node-cron';
+import moment from 'moment';
+import { connectDB, getDB } from './models/db.js'; // Import MongoDB connection
+import apiRoutes from './apiRoutes.js'; // Correct import
+import config from './config.js'; // Import your config
 
-// ✅ Configurations & Data
-const config = require('./config');
+// Define __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// ✅ Connect to MongoDB
+// Destructure the required classes from the imported module
+const { Client, MessageMedia, LocalAuth } = whatsappWeb;
+
+// ✅ Express Server Setup
+const app = express();
+const server = http.createServer(app); // Create an HTTP server
+const io = new Server(server); // Initialize Socket.IO
+const port = 3000; // Default port
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views')); // This will now work correctly
+
+// ✅ Load Settings
+let settings = {};
+async function loadSettings() {
+    try {
+        const response = await fetch('http://localhost:3000/api/settings'); // Adjust the URL as necessary
+        if (!response.ok) {
+            throw new Error('Failed to fetch settings');
+        }
+        settings = await response.json();
+        console.log('✅ Loaded settings:', settings);
+    } catch (error) {
+        console.error('❌ Error loading settings:', error.message);
+    }
+}
+
+
 (async () => {
-    await connectDB(); // Ensure the database is connected
-    await loadProducts(); // Load products after connecting to the database
+    try {
+        await connectDB(); // Ensure the database is connected
+        console.log('✅ Connected to MongoDB');
+        await loadSettings(); // Load settings after connecting to the database
+        setInterval(loadSettings, 6000000);
+        await loadProducts(); // Load products after connecting to the database
+    } catch (error) {
+        console.error('❌ Error connecting to MongoDB:', error.message);
+    }
 })();
+// Define collection names
+const ordersCollectionName = 'orders'; // Replace with your actual orders collection name
+const customersCollectionName = 'customers'; // Replace with your actual customers collection name
+const productsCollectionName = 'products'; // If you have a products collection
 
 // ✅ Load Products from MongoDB
 let products = [];
 async function loadProducts() {
     const db = getDB();
-    const productsCollection = db.collection('products');
+    const productsCollection = db.collection(productsCollectionName);
     products = await productsCollection.find({}).toArray();
-    console.log(`✅ Loaded ${products.length} products.`);
+    console.log(`✅ Loaded ${products.length} products:`, products); // Log the loaded products
 }
-
-// ✅ File paths
-const ordersCollectionName = 'orders'; // MongoDB collection for orders
-const customersCollectionName = 'customers'; // MongoDB collection for customers
-const messagesPath = './messages.json';
 
 // ✅ Load custom messages
 let customMessages = {};
+const messagesPath = './messages.json';
 try {
     if (fs.existsSync(messagesPath)) {
         customMessages = JSON.parse(fs.readFileSync(messagesPath, 'utf-8'));
@@ -55,15 +95,6 @@ try {
     console.error('❌ Error loading custom messages:', err.message);
 }
 
-// ✅ Express Server Setup
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, { cors: { origin: '*' } });
-
-// ✅ Express middleware
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.json());
-
 // ✅ WhatsApp Client Setup
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -72,86 +103,7 @@ const client = new Client({
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
     },
 });
-
-// ✅ Socket.io QR Handling
-let qrCodeData = null;
-
-// ✅ Express Routes
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// API routes for admin dashboard
-app.get('/api/orders', async (req, res) => {
-    try {
-        const db = getDB();
-        const orders = await db.collection(ordersCollectionName).find({}).toArray();
-        res.json(orders);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/customers', async (req, res) => {
-    try {
-        const db = getDB();
-        const customers = await db.collection(customersCollectionName).find({}).toArray();
-        res.json(customers);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/products', (req, res) => {
-    res.json(products);
-});
-
-app.post('/api/messages', (req, res) => {
-    try {
-        const newMessages = req.body;
-        customMessages = { ...customMessages, ...newMessages };
-        fs.writeFileSync(messagesPath, JSON.stringify(customMessages, null, 2));
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post('/api/broadcast', async (req, res) => {
-    try {
-        const { message, filter } = req.body;
-        let recipients = Object.keys(customers);
-        
-        if (filter === 'recent') {
-            // Filter customers who ordered in the last 30 days
-            const thirtyDaysAgo = moment().subtract(30, 'days');
-            recipients = recipients.filter(number => {
-                return customers[number].lastOrderDate && 
-                       moment(customers[number].lastOrderDate).isAfter(thirtyDaysAgo);
-            });
-        }
-        
-        const successList = [];
-        for (const number of recipients) {
-            try {
-                const chatId = `${number}@c.us`; // Use the correct variable here
-                await client.sendMessage(chatId, message);
-                console.log(`Message sent to ${chatId}`);
-                successList.push(number); // Add to success list if sent successfully
-            } catch (err) {
-                console.error(`Failed to send message to ${number}:`, err.message);
-            }
-        }
-        
-        res.json({ 
-            success: true, 
-            sent: successList.length, 
-            total: recipients.length 
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+export { client };
 
 // ✅ WhatsApp Client Events
 client.on('qr', async (qr) => {
@@ -159,8 +111,44 @@ client.on('qr', async (qr) => {
     qrcodeTerminal.generate(qr, { small: true });
 
     try {
-        qrCodeData = await QRCode.toDataURL(qr);
-        io.emit('qr', qrCodeData);
+        const qrCodeData = await QRCode.toDataURL(qr);
+        io.emit('qr', qrCodeData); // Emit the QR code to the client
+        io.emit('status', '📷 Scan the QR Code');
+    } catch (error) {
+        console.error('❌ Error generating QR Code:', error.message);
+    }
+});
+
+
+client.on('auth_failure', (msg) => {
+    console.error('❌ Authentication Failure:', msg);
+    io.emit('status', '❌ Authentication Failed');
+});
+
+client.on('disconnected', (reason) => {
+    console.warn('❌ Client Disconnected:', reason);
+    io.emit('status', '❌ WhatsApp Disconnected');
+
+    // Reconnect after disconnect
+    setTimeout(() => {
+        console.log('♻️ Re-initializing client...');
+        client.initialize();
+    }, 5000);
+});
+
+// ✅ Use the API routes
+app.use('/api', apiRoutes);
+
+
+
+// ✅ WhatsApp Client Events
+client.on('qr', async (qr) => {
+    console.log('📱 QR RECEIVED!');
+    qrcodeTerminal.generate(qr, { small: true });
+
+    try {
+        const qrCodeData = await QRCode.toDataURL(qr);
+        io.emit('qr', qrCodeData); // Emit the QR code to the client
         io.emit('status', '📷 Scan the QR Code');
     } catch (error) {
         console.error('❌ Error generating QR Code:', error.message);
@@ -269,8 +257,16 @@ async function parseOrder(messageText) {
 async function validateOrder(order) {
     let calculatedSubtotal = 0;
 
+    console.log('Available products:', products); // Log available products
+
     for (const item of order.orderDetails) {
-        const product = products.find(p => p.id === item.id && p.name === item.name);
+        console.log(`Validating item: ${item.name} (ID: ${item.id})`);
+        const product = products.find(p => 
+            p.id.trim().toLowerCase() === item.id.trim().toLowerCase() && 
+            p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+        );
+
+        console.log('Product found:', product); // Log the found product
 
         if (!product) {
             return { valid: false, reason: `❌ Invalid product: ${item.name} (${item.id})` };
@@ -299,13 +295,25 @@ async function validateOrder(order) {
         };
     }
 
-    // Apply free shipping if eligible
-    let shippingCost = config.SHIPPING_COST;
-    if (calculatedSubtotal >= config.FREE_SHIPPING_AMOUNT) {
-        shippingCost = 0;
+    // Calculate shipping cost
+    let shippingCost = Number(settings.shippingCost); // Ensure this is a number
+    if (calculatedSubtotal >= settings.freeShippingAmount) {
+        shippingCost = 0; // Free shipping if eligible
     }
 
-    if (order.shipping !== shippingCost) {
+    // Log the calculated and order shipping costs
+    console.log(`Calculated shipping cost: ₹${shippingCost}`);
+    console.log(`Order shipping cost: ₹${order.shipping}`);
+
+    // Convert order.shipping to a number, removing any currency symbols
+    const orderShipping = Number(order.shipping); // Assuming order.shipping is already a number
+
+    // Log the types of the values
+    console.log(`Type of expected shipping cost: ${typeof shippingCost}`);
+    console.log(`Type of actual shipping cost: ${typeof orderShipping}`);
+
+    // Compare the shipping costs
+    if (orderShipping !== shippingCost) {
         return {
             valid: false,
             reason: `❌ Shipping mismatch. Expected ₹${shippingCost}, got ₹${order.shipping}`
@@ -326,7 +334,7 @@ async function validateOrder(order) {
 
 // ✅ UPI Payment Link & QR Generation
 function generateUpiLink(amount, reference) {
-    return `upi://pay?pa=${config.UPI_ID}&pn=${encodeURIComponent(config.BUSINESS_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent(reference)}`;
+    return `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.businessName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(reference)}`;
 }
 
 async function generateUpiQr(amount, reference) {
@@ -339,15 +347,36 @@ async function updateCustomer(phone, data) {
     const customerNumber = phone.replace('@c.us', '');
     const db = getDB();
     const customersCollection = db.collection(customersCollectionName);
+    const userPhonesCollection = db.collection('userPhones'); // New collection for user phone numbers
 
+    // Check if the customer already exists
     const existingCustomer = await customersCollection.findOne({ phone: customerNumber });
 
     if (!existingCustomer) {
+        // If the customer does not exist, create a new entry
         data.orderCount = 0;
         data.firstContactDate = new Date().toISOString();
         data.orders = [];
+        
+        // Insert the new customer
         await customersCollection.insertOne({ phone: customerNumber, ...data });
+
+        // Add the phone number to the userPhones collection if it doesn't already exist
+        const existingPhoneEntry = await userPhonesCollection.findOne({ phones: customerNumber });
+        if (!existingPhoneEntry) {
+            await userPhonesCollection.insertOne({ phones: [customerNumber] }); // Create a new entry with the phone number
+        } else {
+            // If the phone number already exists, ensure it is not duplicated
+            const phoneExists = existingPhoneEntry.phones.includes(customerNumber);
+            if (!phoneExists) {
+                await userPhonesCollection.updateOne(
+                    { phones: existingPhoneEntry.phones },
+                    { $push: { phones: customerNumber } } // Add the new phone number to the array
+                );
+            }
+        }
     } else {
+        // If the customer exists, update their information
         await customersCollection.updateOne(
             { phone: customerNumber },
             { $set: { ...data, lastUpdateDate: new Date().toISOString() } }
@@ -374,13 +403,27 @@ async function saveOrder(order, userName, phone) {
     console.log(`✅ Order saved for ${userName} - Order ID: ${orderRef}`);
 
     // Update customer record
-    await updateCustomer(phone, {
-        name: userName,
-        orderCount: (await getCustomerData(phone)).orderCount + 1,
-        lastOrderDate: new Date().toISOString(),
-        orders: [...(await getCustomerData(phone)).orders, orderRef],
-        ...order.customerInfo
-    });
+    const customerData = await getCustomerData(phone);
+    if (!customerData) {
+        // If the customer does not exist, initialize their data
+        await updateCustomer(phone, {
+            name: userName,
+            orderCount: 1, // Start with 1 order
+            firstContactDate: new Date().toISOString(),
+            lastOrderDate: new Date().toISOString(),
+            orders: [orderRef],
+            ...order.customerInfo
+        });
+    } else {
+        // If the customer exists, update their information
+        await updateCustomer(phone, {
+            name: userName,
+            orderCount: customerData.orderCount + 1,
+            lastOrderDate: new Date().toISOString(),
+            orders: [...customerData.orders, orderRef],
+            ...order.customerInfo
+        });
+    }
 
     return orderRef;
 }
@@ -407,7 +450,20 @@ async function updateOrderStatus(orderId, status) {
 async function getOrderById(orderId) {
     const db = getDB();
     const ordersCollection = db.collection(ordersCollectionName);
-    return await ordersCollection.findOne({ id: orderId });
+    
+    // Normalize the orderId to uppercase
+    const normalizedOrderId = orderId.toUpperCase();
+    
+    // Log the normalized orderId for debugging
+    console.log("Fetching order with ID:", normalizedOrderId);
+    
+    // Query the database with the normalized order ID
+    const order = await ordersCollection.findOne({ id: normalizedOrderId });
+    
+    // Log the fetched order
+    console.log("Fetched order:", order);
+    
+    return order;
 }
 
 // ✅ Format message with variables
@@ -593,7 +649,10 @@ async function processOrderFlow(message, msg, userName, phoneNumber) {
                         return true;
                     }
                     
-                    const product = products.find(p => p.id.toLowerCase() === productId.toLowerCase());
+                    const product = products.find(p => 
+                        p.id.trim().toLowerCase() === item.id.trim().toLowerCase() && 
+                        p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+                    );
                     if (!product) {
                         await message.reply(`❌ Product with ID "${productId}" not found. Please check and try again.`);
                         return true;
@@ -632,7 +691,7 @@ async function processOrderFlow(message, msg, userName, phoneNumber) {
                     orderSummary += `\nSubtotal: ₹${subtotal}`;
                     
                     // Calculate shipping
-                    const shipping = subtotal >= config.FREE_SHIPPING_AMOUNT ? 0 : config.SHIPPING_COST;
+                    const shipping = subtotal >= settings.freeShippingAmount ? 0 : settings.shippingCost;
                     orderSummary += `\nShipping: ₹${shipping}`;
                     orderSummary += `\nTotal: ₹${subtotal + shipping}`;
                     
@@ -691,7 +750,7 @@ async function processOrderFlow(message, msg, userName, phoneNumber) {
                         subtotal += item.price * item.quantity;
                     });
                     
-                    const shipping = subtotal >= config.FREE_SHIPPING_AMOUNT ? 0 : config.SHIPPING_COST;
+                    const shipping = subtotal >= settings.freeShippingAmount ? 0 : settings.shippingCost;
                     const total = subtotal + shipping;
                     
                     // Format order summary
@@ -745,7 +804,7 @@ async function processOrderFlow(message, msg, userName, phoneNumber) {
                         });
                     });
                     
-                    const shipping = subtotal >= config.FREE_SHIPPING_AMOUNT ? 0 : config.SHIPPING_COST;
+                    const shipping = subtotal >= settings.freeShippingAmount ? 0 : settings.shippingCost;
                     const total = subtotal + shipping;
                     
                     const order = {
@@ -775,14 +834,14 @@ async function processOrderFlow(message, msg, userName, phoneNumber) {
                         customerName: userName,
                         amount: total,
                         upiLink,
-                        businessName: config.BUSINESS_NAME
+                        businessName: settings.businessName
                     });
                     
                     await message.reply(confirmationMsg);
                     await message.reply(qrMedia, '', { caption: `📲 Scan to pay ₹${total} for order #${orderRef}` });
                     
                     // Notify Admin
-                    const adminNumbers = config.ADMIN_NUMBERS.map(num => `${num}@c.us`);
+                    const adminNumbers = settings.adminNumbers.map(num => `${num}@c.us`);
                     for (const adminNumber of adminNumbers) {
                         await client.sendMessage(
                             adminNumber, 
@@ -843,16 +902,61 @@ async function processOrderFlow(message, msg, userName, phoneNumber) {
 // ✅ WhatsApp Message Handler
 client.on('message', async (message) => {
     const userName = message.notifyName || message.pushName || 'Customer';
-    const phoneNumber = message.from;
+    const phoneNumber = message.from; // This is the sender's phone number
     const msg = message.body.trim().toLowerCase();
 
+    // Remove the '@c.us' suffix to store the phone number correctly
+    const cleanedPhoneNumber = phoneNumber.replace('@c.us', '');
+
     try {
-        // Update customer's last interaction
-        await updateCustomer(phoneNumber, {
-            name: userName,
-            lastContact: new Date().toISOString()
-        });
-        
+        // Check if the phone number exists in the userPhones collection
+        const db = getDB();
+        const userPhonesCollection = db.collection('userPhones');
+
+        // Check if the phone number is already in the collection
+        const existingEntry = await userPhonesCollection.findOne({ phones: cleanedPhoneNumber });
+
+        if (!existingEntry) {
+            // If the phone number does not exist, add it to the collection
+            await userPhonesCollection.updateOne(
+                { phones: { $ne: cleanedPhoneNumber } }, // Ensure we don't duplicate
+                { $addToSet: { phones: cleanedPhoneNumber } }, // Add the phone number to the array
+                { upsert: true } // Create a new document if no match is found
+            );
+            console.log(`✅ Added new phone number to userPhones: ${cleanedPhoneNumber}`);
+        }
+
+        // Check for greeting messages
+        if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
+            const welcomeMsg = formatMessage('welcome', {
+                businessName: settings.businessName
+            });
+
+            const menuOptions = 
+                `${welcomeMsg}\n\n` +
+                `Choose from these options:\n\n` +
+                `1️⃣ Type *"how to order"* for ordering instructions\n` +
+                `2️⃣ Type *"shipping"* for shipping information\n` +
+                `3️⃣ Type *"track"* to track your order\n` +
+                `4️⃣ Type *"products"* to view our catalog`;
+
+            await message.reply(menuOptions);
+            return; // Exit after handling the greeting
+        }
+
+        // Example of quoting a message
+        if (msg.includes('some specific text')) {
+            try {
+                await client.sendMessage(phoneNumber, 'Your response here', {
+                    quotedMessageId: message.id._serialized // Quoting the original message
+                });
+            } catch (err) {
+                console.error('Error sending quoted message:', err.message);
+                await message.reply('⚠️ Sorry, I couldn\'t send your message. Please try again.');
+            }
+            return; // Exit after handling this specific case
+        }
+
         // 1️⃣ Check if in active order flow
         const handledByOrderFlow = await processOrderFlow(message, msg, userName, phoneNumber);
         if (handledByOrderFlow) return;
@@ -861,7 +965,9 @@ client.on('message', async (message) => {
         if (msg.includes('order details:') && msg.includes('customer details:')) {
             const order = await parseOrder(message.body);
             const validation = await validateOrder(order);
-
+            console.log(validation);
+            console.log(order);
+            
             if (!validation.valid) {
                 console.log(`❌ Validation failed: ${validation.reason}`);
                 await message.reply(`Hi ${userName},\n\n${validation.reason}\n\n⚠️ Please send correct order details.`);
@@ -879,151 +985,156 @@ client.on('message', async (message) => {
                 customerName: userName,
                 amount,
                 upiLink,
-                businessName: config.BUSINESS_NAME
+                businessName: settings.businessName
             });
 
             await message.reply(confirmationMsg);
             await message.reply(qrMedia, '', { caption: `📲 Scan to pay ₹${amount} for order #${orderRef}` });
 
-                        // Notify Admin
-                        const adminNumbers = config.ADMIN_NUMBERS.map(num => `${num}@c.us`);
-                        for (const adminNumber of adminNumbers) {
-                            await client.sendMessage(adminNumber, `📦 *New Order #${orderRef} from ${userName}*\n\n${message.body}`);
-                        }
-                        return;
-                    }
-            
-                    // 3️⃣ Handle Media (Payment Screenshot)
-                    if (message.hasMedia) {
-                        console.log(`✅ Payment screenshot received from ${userName}`);
-            
-                        const media = await message.downloadMedia();
-                        const adminNumbers = config.ADMIN_NUMBERS.map(num => `${num}@c.us`);
-            
-                        for (const adminNumber of adminNumbers) {
-                            await client.sendMessage(adminNumber, media, { caption: `💸 Payment screenshot from ${userName}` });
-                        }
-            
-                        // Send formatted message using template
-                        const paymentMsg = formatMessage('paymentReceived', {
-                            customerName: userName,
-                            supportNumber: config.SUPPORT_NUMBER
-                        });
-            
-                        await message.reply(paymentMsg);
-                        return;
-                    }
-                    
-                    // 4️⃣ Order Tracking
-                    if (msg.startsWith('track:')) {
-                        const orderId = msg.replace('track:', '').trim();
-                        const order = await getOrderById(orderId);
-                        
-                        if (!order) {
-                            await message.reply(`❌ Order #${orderId} not found. Please check the order ID and try again.`);
-                            return;
-                        }
-                        
-                        let statusEmoji;
-                        switch (order.status) {
-                            case 'pending_payment': statusEmoji = '⏳ Pending Payment'; break;
-                            case 'processing': statusEmoji = '🔄 Processing'; break;
-                            case 'shipped': statusEmoji = '🚚 Shipped'; break;
-                            case 'delivered': statusEmoji = '✅ Delivered'; break;
-                            case 'cancelled': statusEmoji = '❌ Cancelled'; break;
-                            default: statusEmoji = '⏳ Pending';
-                        }
-                        
-                        const trackingInfo = 
-                            `📦 *Order Tracking #${orderId}*\n\n` +
-                            `Status: ${statusEmoji}\n` +
-                            `Order Date: ${moment(order.timestamp).format('MMM DD, YYYY')}\n`;
-                        
-                        if (order.trackingNumber) {
-                            trackingInfo += `Tracking Number: ${order.trackingNumber}\n`;
-                        }
-                        
-                        if (order.estimatedDelivery) {
-                            trackingInfo += `Estimated Delivery: ${moment(order.estimatedDelivery).format('MMM DD, YYYY')}\n`;
-                        }
-                        
-                        trackingInfo += `\nItems: ${order.orderDetails.length} products\n` +
-                            `Total: ₹${order.total}\n\n` +
-                            `For more details, contact customer support at ${config.SUPPORT_NUMBER}`;
-                        
-                        await message.reply(trackingInfo);
-                        return;
-                    }
-                    
-                    // 5️⃣ Place Order Command
-                    if (msg === 'place order') {
-                        await startOrderFlow(message, userName, phoneNumber);
-                        return;
-                    }
-                    
-                    // 6️⃣ Product Catalog Request
-                    if (msg.includes('products') || msg.includes('catalog')) {
-                        await sendProductCatalog(message);
-                        return;
-                    }
-                    
-                    // 7️⃣ Shipping Information
-                    if (msg.includes('shipping') || msg.includes('delivery')) {
-                        const shippingMsg = formatMessage('shippingInfo', {
-                            freeShippingAmount: config.FREE_SHIPPING_AMOUNT,
-                            shippingCost: config.SHIPPING_COST
-                        });
-                        
-                        await message.reply(shippingMsg);
-                        return;
-                    }
-                    
-                    // 8️⃣ Order Tracking Info
-                    if (msg.includes('track') || msg.includes('status')) {
-                        const trackingMsg = formatMessage('orderTracking', {});
-                        await message.reply(trackingMsg);
-                        return;
-                    }
-                    
-                    // 9️⃣ Button Selection Response
-                    if (msg.includes('how to order')) {
-                        await message.reply(
-                            '🛒 *How to Order*\n\n' +
-                            '1. Browse our product catalog (type "products")\n' +
-                            '2. Type "place order" to start the order process\n' +
-                            '3. Add products to your cart\n' +
-                            '4. Provide your delivery information\n' +
-                            '5. Confirm and pay\n' +
-                            '6. Share payment screenshot\n\n' +
-                            'We\'ll process your order as soon as payment is confirmed!'
-                        );
-                        return;
-                    }
-                    
-                    // 🔟 Greeting and FAQ Buttons
-                    if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
-                        const welcomeMsg = formatMessage('welcome', {
-                            businessName: config.BUSINESS_NAME
-                        });
-                        
-                        // Instead of Buttons, use a simple text menu
-                        const menuOptions = 
-                            `${welcomeMsg}\n\n` +
-                            `Choose from these options:\n\n` +
-                            `1️⃣ Type *"how to order"* for ordering instructions\n` +
-                            `2️⃣ Type *"shipping"* for shipping information\n` +
-                            `3️⃣ Type *"track"* to track your order\n` +
-                            `4️⃣ Type *"products"* to view our catalog`;
-                
-                        await message.reply(menuOptions);
-                        return;
-                    }    
-            
-                } catch (err) {
-                    console.error(`❌ Error processing message from ${userName}:`, err.message);
-                    await message.reply(`⚠️ Hi ${userName}, an error occurred. Please try again later.`);
-                }
+            // Notify Admin
+            const adminNumbers = settings.adminNumbers.map(num => `${num}@c.us`);
+            for (const adminNumber of adminNumbers) {
+                await client.sendMessage(adminNumber, `📦 *New Order #${orderRef} from ${userName}*\n\n${message.body}`);
+            }
+            return;
+        }
+
+        // 3️⃣ Handle Media (Payment Screenshot)
+        if (message.hasMedia) {
+            console.log(`✅ Payment screenshot received from ${userName}`);
+
+            const media = await message.downloadMedia();
+            const adminNumbers = settings.adminNumbers.map(num => `${num}@c.us`);
+
+            for (const adminNumber of adminNumbers) {
+                await client.sendMessage(adminNumber, media, { caption: `💸 Payment screenshot from ${userName}` });
+            }
+
+            // Send formatted message using template
+            const paymentMsg = formatMessage('paymentReceived', {
+                customerName: userName,
+                supportNumber: settings.supportNumber
             });
+
+            await message.reply(paymentMsg);
+            return;
+        }
+
+        // 4️⃣ Order Tracking
+        if (msg.startsWith('track:')) {
+            const orderId = msg.replace('track:', '').trim().toUpperCase(); // Normalize here as well
+            const order = await getOrderById(orderId);
+            console.log(order);
+        
+            if (!order) {
+                await message.reply(`❌ Order #${orderId} not found. Please check the order ID and try again.`);
+                return;
+            }
+        
+            let statusEmoji;
+            switch (order.status) {
+                case 'pending_payment': statusEmoji = '⏳ Pending Payment'; break;
+                case 'processing':                 statusEmoji = '🔄 Processing'; break;
+                case 'shipped': statusEmoji = '🚚 Shipped'; break;
+                case 'delivered': statusEmoji = '✅ Delivered'; break;
+                case 'cancelled': statusEmoji = '❌ Cancelled'; break;
+                default: statusEmoji = '⏳ Pending';
+            }
+        
+            // Use let for trackingInfo since it will be modified
+            let trackingInfo = 
+                `📦 *Order Tracking #${orderId}*\n\n` +
+                `Status: ${statusEmoji}\n` +
+                `Order Date: ${moment(order.timestamp).format('MMM DD, YYYY')}\n`;
+        
+            if (order.trackingNumber) {
+                trackingInfo += `Tracking Number: ${order.trackingNumber}\n`;
+            }
+        
+            if (order.estimatedDelivery) {
+                trackingInfo += `Estimated Delivery: ${moment(order.estimatedDelivery).format('MMM DD, YYYY')}\n`;
+            }
+        
+            // Check if orderDetails exists and is an array
+            const itemCount = Array.isArray(order.orderDetails) ? order.orderDetails.length : 0;
+        
+            trackingInfo += `\nItems: ${itemCount} products\n` +
+                `Total: ₹${order.total}\n\n` +
+                `For more details, contact customer support at ${settings.supportNumber}`;
+        
+            await message.reply(trackingInfo);
+            return;
+        }
+
+        // 5️⃣ Place Order Command
+        if (msg === 'place order') {
+            await startOrderFlow(message, userName, phoneNumber);
+            return;
+        }
+
+        // 6️⃣ Product Catalog Request
+        if (msg.includes('products') || msg.includes('catalog')) {
+            await sendProductCatalog(message);
+            return;
+        }
+
+        // 7️⃣ Shipping Information
+        if (msg.includes('shipping') || msg.includes('delivery')) {
+            const shippingMsg = formatMessage('shippingInfo', {
+                freeShippingAmount: settings.freeShippingAmount,
+                shippingCost: settings.shippingCost
+            });
+
+            await message.reply(shippingMsg);
+            return;
+        }
+
+        // 8️⃣ Order Tracking Info
+        if (msg.includes('track') || msg.includes('status')) {
+            const trackingMsg = formatMessage('orderTracking', {});
+            await message.reply(trackingMsg);
+            return;
+        }
+
+        // 9️⃣ Button Selection Response
+        if (msg.includes('how to order')) {
+            await message.reply(
+                '🛒 *How to Order*\n\n' +
+                '1. Browse our product catalog (type "products")\n' +
+                '2. Type "place order" to start the order process\n' +
+                '3. Add products to your cart\n' +
+                '4. Provide your delivery information\n' +
+                '5. Confirm and pay\n' +
+                '6. Share payment screenshot\n\n' +
+                'We\'ll process your order as soon as payment is confirmed!'
+            );
+            return;
+        }
+
+        // 🔟 Greeting and FAQ Buttons
+        if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
+            const welcomeMsg = formatMessage('welcome', {
+                businessName: settings.businessName
+            });
+
+            // Instead of Buttons, use a simple text menu
+            const menuOptions = 
+                `${welcomeMsg}\n\n` +
+                `Choose from these options:\n\n` +
+                `1️⃣ Type *"how to order"* for ordering instructions\n` +
+                `2️⃣ Type *"shipping"* for shipping information\n` +
+                `3️⃣ Type *"track"* to track your order\n` +
+                `4️⃣ Type *"products"* to view our catalog`;
+
+            await message.reply(menuOptions);
+            return;
+        }
+
+    } catch (err) {
+        console.error(`❌ Error processing message from ${userName}:`, err.message);
+        await message.reply(`⚠️ Hi ${userName}, an error occurred. Please try again later.`);
+    }
+});
             
             // ✅ Scheduled tasks
             // Daily orders summary at 9PM
@@ -1076,7 +1187,7 @@ client.on('message', async (message) => {
                     }
                     
                     // Send to admin
-                    const adminNumbers = config.ADMIN_NUMBERS.map(num => safeChatId(num)).filter(Boolean);
+                    const adminNumbers = settings.adminNumbers.map(num => safeChatId(num)).filter(Boolean);
                     for (const adminChatId of adminNumbers) {
                         await client.sendMessage(adminChatId, summary);
                         console.log('✅ Daily orders summary sent to admin');
@@ -1101,7 +1212,7 @@ client.on('message', async (message) => {
                     const ordersBackup = new MessageMedia('application/json', Buffer.from(JSON.stringify(orders)).toString('base64'), 'orders.json');
                     const customersBackup = new MessageMedia('application/json', Buffer.from(JSON.stringify(customers)).toString('base64'), 'customers.json');
             
-                    const adminNumbers = config.ADMIN_NUMBERS.map(num => `${num}@c.us`);
+                    const adminNumbers = settings.adminNumbers.map(num => `${num}@c.us`);
                     for (const adminNumber of adminNumbers) {
                         await client.sendMessage(adminNumber, ordersBackup, { caption: '📁 Weekly Orders Backup' });
                         await client.sendMessage(adminNumber, customersBackup, { caption: '📁 Weekly Customers Backup' });
@@ -1145,7 +1256,7 @@ client.on('message', async (message) => {
                             await client.sendMessage(
                                 chatId,
                                 `👋 Hello ${customer.name}!\n\n` +
-                                `We miss you at ${config.BUSINESS_NAME}. It's been a while since your last order on ${customer.lastOrder}.\n\n` +
+                                `We miss you at ${settings.businessName}. It's been a while since your last order on ${customer.lastOrder}.\n\n` +
                                 `*Check out our new products!* Type "products" to see what's new.\n\n` +
                                 `Use code *WELCOME10* for 10% off your next order.`
                             );
@@ -1170,6 +1281,6 @@ client.on('message', async (message) => {
             
             // ✅ Start WhatsApp Client & Server
             client.initialize();
-            server.listen(config.PORT, () => {
+            app.listen(config.PORT, () => {
                 console.log(`🚀 Server is running at http://localhost:${config.PORT}`);
             });
