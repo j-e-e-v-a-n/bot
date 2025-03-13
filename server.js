@@ -1,6 +1,7 @@
 // server.js
 import express from 'express';
 import cors from 'cors';
+import axios  from 'axios';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import whatsappWeb from 'whatsapp-web.js'; // Import the entire module
@@ -98,7 +99,6 @@ client.on('ready', () => {
     isClientReady = true; // Set the flag when the client is ready
 });
 
-
 app.put('/api/orders/:id', async (req, res) => {
     const orderId = req.params.id;
     const updateData = req.body;
@@ -130,27 +130,34 @@ app.put('/api/orders/:id', async (req, res) => {
                         `Estimated Delivery: ${updatedOrder.estimatedDelivery || 'N/A'}.`;
 
         // Log the message for debugging
-        console.log("Sending message:", message);
+        console.log("Prepared message:", message);
 
-        // Check if the client is ready before sending the message
-        if (!isClientReady) {
-            console.error('❌ Client is not ready to send messages.');
-            return res.status(500).json({ error: 'Client is not ready to send messages.' });
+        // Instead of calling sendMessageToUser, make a POST request to the /send-message endpoint
+        try {
+            const response = await axios.post('http://localhost:5000/send-message', {
+                phone: userPhone,
+                message: message
+            });
+
+            if (response.data.success) {
+                console.log('✅ Message sent successfully via /send-message');
+                return res.status(200).json({ message: 'Order updated and message sent successfully' });
+            } else {
+                console.error('❌ Failed to send message via /send-message');
+                return res.status(500).json({ error: 'Failed to send message' });
+            }
+
+        } catch (sendError) {
+            console.error('❌ Error calling /send-message endpoint:', sendError.message);
+            return res.status(500).json({ error: 'Error sending message to user' });
         }
 
-        // Send the message to the customer
-        const sendMessageResult = await sendMessageToUser (client, userPhone, message); // Pass client as an argument
-        if (!sendMessageResult.success) {
-            console.error(`Failed to send message to ${userPhone}: ${sendMessageResult.error}`);
-            return res.status(500).json({ error: sendMessageResult.error });
-        }
-
-        res.status(200).json({ message: 'Order updated successfully' });
     } catch (error) {
-        console.error('Error updating order:', error);
+        console.error('❌ Error updating order:', error);
         res.status(500).json({ detail: 'Internal Server Error' });
     }
 });
+
 // Add Product
 app.post('/api/products', async (req, res) => {
     const { id, name, price, category, inStock, description, imageUrl } = req.body;

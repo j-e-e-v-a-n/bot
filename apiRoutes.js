@@ -95,17 +95,24 @@ router.post('/send-message', async (req, res) => {
     const { phone, message } = req.body;
 
     if (!phone || !message) {
-        return res.status(400).json({ error: 'Phone number bband message are required.' });
+        return res.status(400).json({ error: 'Phone number and message are required.' });
     }
 
     try {
-        await sendMessageToUser (client, phone, message);
+        const sendMessageResult = await sendMessageToUser(client, phone, message);
+
+        if (!sendMessageResult.success) {
+            console.error(`❌ Failed to send message to ${phone}: ${sendMessageResult.error}`);
+            return res.status(500).json({ error: sendMessageResult.error });
+        }
+
         return res.status(200).json({ success: true, message: 'Message sent successfully.' });
     } catch (error) {
-        console.error('Error sending message:', error);
+        console.error('❌ Error sending message:', error);
         return res.status(500).json({ error: 'Failed to send message.' });
     }
 });
+
 
 
 
