@@ -3,6 +3,7 @@ import moment from 'moment';
 import { getDB } from './models/db.js';
 import { sendMessageToUser } from './utils/sendMessage.js';
 import * as data from './models/data.js'; // since you're using data.getSettings() later
+import { client } from ''
 
 const router = express.Router();
 
@@ -17,6 +18,30 @@ router.get('/orders', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+router.post('/messages/bulk', async (req, res) => {
+    const { message } = req.body;
+
+    try {
+        const phoneNumbers = await data.getUserPhones();
+
+        let sentCount = 0;
+        for (const phone of phoneNumbers) {
+            const sendMessageResult = await sendMessageToUser(client, phone, message);
+            if (sendMessageResult.success) {
+                sentCount++;
+            } else {
+                console.error(`Failed to send message to ${phone}: ${sendMessageResult.error}`);
+            }
+        }
+
+        res.status(200).json({ success: true, sent: sentCount });
+    } catch (error) {
+        console.error('Error sending bulk messages:', error);
+        res.status(500).json({ success: false, error: 'Failed to send bulk messages' });
+    }
+});
+
 
 
 

@@ -5,7 +5,7 @@ const RENDER_URLS = [
   'https://bot-ir83.onrender.com/api/settings'
 ];
 
-const PING_INTERVAL = 5 * 60 * 1000; // 14 minutes in milliseconds
+const PING_INTERVAL = 1 * 60 * 1000; // 14 minutes in milliseconds
 
 export const usePingService = () => {
   const [lastPing, setLastPing] = useState<Date | null>(null);

@@ -131,12 +131,12 @@ console.error('❌ Error loading custom messages:', err.message);
 //     },
 //   });
 const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    },
-    });
+authStrategy: new LocalAuth(),
+puppeteer: {
+headless: true,
+args: ['--no-sandbox', '--disable-setuid-sandbox'],
+},
+});
   
   // ✅ API Routes
   app.use('/api', apiRoutes);

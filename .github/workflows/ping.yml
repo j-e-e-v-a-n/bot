@@ -1,0 +1,18 @@
+name: Ping Render Servers
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Runs every 10 minutes (UTC)
+
+  workflow_dispatch: # Optional: lets you run it manually too!
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Render API (bot-1-nyuj)
+        run: curl -s https://bot-1-nyuj.onrender.com/api/orders
+
+      - name: Ping Render API (bot-ir83)
+        run: curl -s https://bot-ir83.onrender.com/api/settings
