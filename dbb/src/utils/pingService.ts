@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 
 const RENDER_URLS = [
-  'https://bot-1-nyuj.onrender.com',
-  'https://bot-ir83.onrender.com'
+  'https://bot-1-nyuj.onrender.com/api/orders',
+  'https://bot-ir83.onrender.com/api/settings'
 ];
 
 const PING_INTERVAL = 5 * 60 * 1000; // 14 minutes in milliseconds

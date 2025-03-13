@@ -12,6 +12,7 @@ import moment from 'moment';
 import { connectDB, getDB } from './models/db.js'; // Import MongoDB connection
 import apiRoutes from './apiRoutes.js'; // Correct import
 import config from './config.js'; // Import your config
+import MongoAuth from './MongoAuth.js';
 import cors from 'cors';
 
 // Define __dirname for ES modules
@@ -19,12 +20,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Destructure the required classes from the imported module
-const { Client, MessageMedia, LocalAuth } = whatsappWeb;
+const { Client, MessageMedia, LocalAuth, List } = whatsappWeb;
 
 // ✅ Express Server Setup
 const app = express();
 const server = http.createServer(app); // Create an HTTP server
-const port = 3000; // Default port
 
 app.use(cors()); // Enable CORS for all origins
 app.use(express.json());
@@ -50,7 +50,7 @@ app.get('/', (req, res) => {
 let settings = {};
 async function loadSettings() {
     try {
-        const response = await fetch(`http://localhost:${port}/api/settings`); // Adjust the URL as necessary
+        const response = await fetch(`https://bot-ir83.onrender.com/api/settings`); // Adjust the URL as necessary
         if (!response.ok) {
             throw new Error('Failed to fetch settings');
         }
@@ -123,66 +123,88 @@ console.error('❌ Error loading custom messages:', err.message);
 }
 
 // ✅ WhatsApp Client Setup
+// const client = new Client({
+//     authStrategy: new MongoAuth(), // 👈 Custom Mongo session handler
+//     puppeteer: {
+//       headless: true,
+//       args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//     },
+//   });
 const client = new Client({
-authStrategy: new LocalAuth(),
-puppeteer: {
-headless: true,
-args: ['--no-sandbox', '--disable-setuid-sandbox'],
-},
-});
-
-// ✅ Use the API routes
-app.use('/api', apiRoutes);
-
-let qrCodeData = null;
-
-
-// ✅ WhatsApp Client Events
-client.on('qr', async (qr) => {
-console.log('📱 QR RECEIVED!');
-qrcodeTerminal.generate(qr, { small: true });
-
-try {
-const qrCodeData = await QRCode.toDataURL(qr);
-io.emit('qr', qrCodeData); // Emit the QR code to the client
-io.emit('status', '📷 Scan the QR Code');
-} catch (error) {
-console.error('❌ Error generating QR Code:', error.message);
-}
-});
-
-io.on('connection', (socket) => {
-    console.log('Frontend client connected');
-    if (qrCodeData) {
-      socket.emit('qr', qrCodeData); // Emit QR code if available
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    },
+    });
+  
+  // ✅ API Routes
+  app.use('/api', apiRoutes);
+  
+  let qrCodeData = null;
+  
+  // ✅ WhatsApp Client Events
+  client.on('qr', async (qr) => {
+    console.log('📱 QR RECEIVED!');
+    qrcodeTerminal.generate(qr, { small: true });
+  
+    try {
+      // ✅ Update global qrCodeData
+      qrCodeData = await QRCode.toDataURL(qr);
+  
+      // ✅ Emit latest QR code to frontend
+      io.emit('qr', qrCodeData);
+      io.emit('status', '📷 Scan the QR Code');
+  
+      // Optional: Clear old QR after 60 seconds (expiry window)
+      setTimeout(() => {
+        qrCodeData = null;
+        io.emit('status', '⚠️ QR Code expired, waiting for refresh...');
+      }, 60000);
+    } catch (error) {
+      console.error('❌ Error generating QR Code:', error.message);
     }
   });
-
-client.on('ready', () => {
-console.log('✅ WhatsApp bot is ready!');
-io.emit('status', '✅ WhatsApp Connected');
-});
-
-client.on('authenticated', () => {
-console.log('🔐 Authenticated');
-io.emit('status', '🔐 Authenticated');
-});
-
-client.on('auth_failure', (msg) => {
-console.error('❌ Authentication Failure:', msg);
-io.emit('status', '❌ Authentication Failed');
-});
-
-client.on('disconnected', (reason) => {
-console.warn('❌ Client Disconnected:', reason);
-io.emit('status', '❌ WhatsApp Disconnected');
-
-// Reconnect after disconnect
-setTimeout(() => {
-console.log('♻️ Re-initializing client...');
-client.initialize();
-}, 5000);
-});
+  
+  io.on('connection', (socket) => {
+    console.log('Frontend client connected');
+  
+    if (qrCodeData) {
+      console.log('🟢 Sending QR to newly connected frontend');
+      socket.emit('qr', qrCodeData);
+      socket.emit('status', '📷 Scan the QR Code');
+    } else {
+      socket.emit('status', '⏳ Waiting for QR Code...');
+    }
+  });
+  
+  // ✅ Client Status Events
+  client.on('ready', () => {
+    console.log('✅ WhatsApp bot is ready!');
+    io.emit('status', '✅ WhatsApp Connected');
+  });
+  
+  client.on('authenticated', () => {
+    console.log('🔐 Authenticated');
+    io.emit('status', '🔐 Authenticated');
+  });
+  
+  client.on('auth_failure', (msg) => {
+    console.error('❌ Authentication Failure:', msg);
+    io.emit('status', '❌ Authentication Failed');
+  });
+  
+  client.on('disconnected', (reason) => {
+    console.warn('❌ Client Disconnected:', reason);
+    io.emit('status', '❌ WhatsApp Disconnected');
+  
+    // ✅ Reconnect after disconnect
+    setTimeout(() => {
+      console.log('♻️ Re-initializing client...');
+      client.initialize();
+    }, 5000);
+  });
+  
 
 
 // ✅ Order Management Functions
@@ -482,6 +504,9 @@ function formatMessage(template, variables) {
 async function sendProductCatalog(message, category = null) {
     try {
         let filteredProducts = products;
+        console.log('Available products:', filteredProducts);
+
+        // Filter products based on category
         if (category) {
             filteredProducts = products.filter(p => 
                 p.category && p.category.toLowerCase() === category.toLowerCase() && p.inStock
@@ -489,81 +514,45 @@ async function sendProductCatalog(message, category = null) {
         } else {
             filteredProducts = products.filter(p => p.inStock);
         }
-        
-        // Group by category
-        const categories = {};
-        filteredProducts.forEach(product => {
-            if (!product.category) product.category = 'Uncategorized';
-            if (!categories[product.category]) categories[product.category] = [];
-            categories[product.category].push(product);
-        });
-        
-        // Send category list if no category specified
-        if (!category && Object.keys(categories).length > 1) {
-            const sections = [];
-            
-            for (const [categoryName, prods] of Object.entries(categories)) {
-                const items = prods.slice(0, 10).map(p => ({
-                    id: p.id,
-                    title: `${p.name} - ₹${p.price}`
-                }));
-                
-                if (items.length > 0) {
-                    sections.push({
-                        title: categoryName,
-                        rows: items
-                    });
-                }
-            }
-            
-            if (sections.length > 0) {
-                const list = new List(
-                    '🛍️ *Our Product Categories*\n\nSelect a category to explore:',
-                    'View Products',
-                    sections,
-                    'Product Catalog',
-                    'Select a category'
-                );
-                
-                await message.reply(list);
-                return;
-            }
-        }
-        
-        // Send products for a specific category or all if few products
-        const targetProducts = category ? categories[category] : filteredProducts;
-        if (!targetProducts || targetProducts.length === 0) {
-            await message.reply('😔 No products found in this category.');
+
+        if (filteredProducts.length === 0) {
+            await message.reply('😔 No products available at the moment.');
             return;
         }
-        
-        // Send in batches of 5 to avoid overloading
-        const batches = [];
-        for (let i = 0; i < targetProducts.length; i += 5) {
-            batches.push(targetProducts.slice(i, i + 5));
-        }
-        
-        for (const batch of batches) {
-            let catalogMessage = category 
-                ? `🛍️ *${category} Products*\n\n` 
-                : '🛍️ *Our Products*\n\n';
-                
-            batch.forEach(p => {
-                catalogMessage += `*${p.name}* - ₹${p.price}\n`;
-                catalogMessage += `ID: ${p.id}\n`;
-                if (p.description) catalogMessage += `${p.description}\n`;
-                catalogMessage += '\n';
+
+        // Group products by category
+        const categories = {};
+        filteredProducts.forEach(product => {
+            const cat = product.category || 'Other';
+            if (!categories[cat]) categories[cat] = [];
+            categories[cat].push(product);
+        });
+
+        // Send category-wise messages
+        for (const [categoryName, categoryProducts] of Object.entries(categories)) {
+            let catalogMessage = `🛍️ *${categoryName}*\n\n`;
+
+            categoryProducts.forEach(product => {
+                catalogMessage += `*${product.name}*\n`;
+                catalogMessage += `💰 Price: ₹${product.price}\n`;
+                catalogMessage += `🏷️ ID: ${product.id}\n\n`;
             });
+
+            catalogMessage += '\n📝 *How to place an order:*\n';
+            catalogMessage += 'Just type:\n';
+            catalogMessage += '*place order*\n\n';
+            catalogMessage += '✅ Our team will guide you through the process!';
             
-            catalogMessage += 'To order, type *"place order"* and we\'ll guide you through the process.';
+
             await message.reply(catalogMessage);
             
-            // Add small delay between messages
+            // Add small delay between messages to prevent rate limiting
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
+
     } catch (err) {
-        console.error('❌ Error sending product catalog:', err.message);
-        await message.reply('⚠️ Something went wrong when trying to show our products. Please try again later.');
+        console.error('❌ Error sending product catalog:', err);
+        await message.reply('⚠️ Sorry, there was an error showing the product catalog. Please try again later.');
     }
 }
 
@@ -942,7 +931,7 @@ client.on('message', async (message) => {
                 `${welcomeMsg}\n\n` +
                 `Choose from these options:\n\n` +
                 `1️⃣ Type *"how to order"* for ordering instructions\n` +
-                `2️⃣ Type *"shipping"* for shipping information\n` +
+                `2️⃣ Type *"delivery"* for shipping information\n` +
                 `3️⃣ Type *"track"* to track your order\n` +
                 `4️⃣ Type *"products"* to view our catalog`;
 
@@ -965,7 +954,7 @@ client.on('message', async (message) => {
             return;
         }
 
-        if (msg.includes('shipping') || msg.includes('delivery')) {
+        if (msg === 'shipping' || msg.includes('delivery')) {
             const shippingMsg = formatMessage('shippingInfo', {
                 freeShippingAmount: settings.freeShippingAmount,
                 shippingCost: settings.shippingCost
@@ -982,7 +971,20 @@ client.on('message', async (message) => {
 
         // 🔵 START ORDER FLOW
         if (msg === 'place order') {
-            await startOrderFlow(message, userName, phoneNumber);
+            const orderLink = `https://yourwebsite.com/place-order`; // Replace with your actual order link
+            await message.reply(`To place your order, please visit: ${orderLink}`);
+            return;
+        }
+
+        if (msg.toLowerCase() === 'track') {
+            await message.reply(
+                `📝 *Order Tracking Help*\n\n` +
+                `To track your order, please use the following format:\n\n` +
+                `*track:YOUR_ORDER_ID*\n\n` +
+                `For example:\n` +
+                `track:ABC123\n\n` +
+                `Make sure to replace *YOUR_ORDER_ID* with your actual order ID.`
+            );
             return;
         }
 

@@ -5,6 +5,48 @@ const ordersCollectionName = 'orders';
 const customersCollectionName = 'customers';
 const productsCollectionName = 'products';
 const settingsCollectionName = 'settings';
+const authCollectionName = 'auth'; // Collection for WhatsApp auth state
+
+
+
+async function saveAuth(auth) {
+    const db = getDB();
+    const authCollection = db.collection('auth'); // Ensure this matches your collection name
+
+    console.log('Saving auth:', auth); // Log the auth object
+    try {
+        const result = await authCollection.updateOne({}, { $set: { session: auth } }, { upsert: true });
+        console.log('Auth saved successfully:', result); // Log the result of the operation
+    } catch (error) {
+        console.error('❌ Error saving auth:', error);
+    }
+}
+
+async function getAuth() {
+    const db = getDB();
+    const authCollection = db.collection('auth'); // Ensure this matches your collection name
+
+    try {
+        const result = await authCollection.findOne({});
+        console.log('Retrieved auth:', result); // Log the retrieved auth
+        return result ? result.session : null;
+    } catch (error) {
+        console.error('❌ Error retrieving auth:', error);
+        return null;
+    }
+}
+  export async function clearAuth() {
+    const db = getDB();
+    const authCollection = db.collection('authSessions');
+  
+    try {
+      const result = await authCollection.deleteMany({});
+      console.log('🗑️ Session document(s) deleted:', result.deletedCount);
+    } catch (error) {
+      console.error('❌ Error clearing authSessions:', error);
+    }
+  }
+
 
 async function loadProducts() {
     const db = getDB();
@@ -112,6 +154,13 @@ const removeProduct = async (id) => {
     await productsCollection.deleteOne({ id });
 };
 
+export async function getUserPhones() {
+    const db = getDB();
+    const userPhones = await db.collection('userPhones').find({}).toArray();
+    return userPhones.flatMap(user => user.phones);
+}
+
+
 // Replace module.exports with export default
 export default {
     loadProducts,
@@ -127,5 +176,10 @@ export default {
     updateProduct,
     getProducts,
     getProductById,
-    removeProduct
+    removeProduct,
+    getUserPhones,
+    saveAuth,        // 🔥 new
+    getAuth,          // 🔥 new
+    clearAuth
 };
+

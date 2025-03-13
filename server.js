@@ -6,10 +6,19 @@ import { dirname } from 'path';
 import whatsappWeb from 'whatsapp-web.js'; // Import the entire module
 import { connectDB, getDB } from './models/db.js'; // Import your connectDB and getDB functions
 import data from './models/data.js'; // Import your data model functions
+import MongoAuth from './MongoAuth.js'; // path where you put the custom strategy
 import { sendMessageToUser  } from './utils/sendMessage.js'; // Utility function to send messages
 
 const { Client, MessageMedia, LocalAuth } = whatsappWeb;
 
+
+// const client = new Client({
+//     authStrategy: new MongoAuth(), // 👈 Replacing LocalAuth with MongoAuth!
+//     puppeteer: {
+//         headless: true,
+//         args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//     },
+// });
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -18,6 +27,21 @@ const client = new Client({
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
     },
     });
+
+client.on('ready', () => {
+    console.log('✅ WhatsApp Client is ready!');
+});
+
+client.on('authenticated', () => {
+    console.log('🔐 WhatsApp Client authenticated!');
+});
+
+client.on('disconnected', (reason) => {
+    console.log('❌ WhatsApp Client disconnected:', reason);
+    // Optionally handle reconnect logic or clear the session from DB:
+    // await client.destroy();
+});
+    
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -75,20 +99,14 @@ client.on('ready', () => {
 });
 
 app.post('/api/messages/bulk', async (req, res) => {
-    const { message, filter } = req.body;
+    const { message } = req.body;
 
     try {
-        const db = getDB();
-        const userPhonesCollection = db.collection('userPhones');
+        const phoneNumbers = await data.getUserPhones();
 
-        // Fetch all phone numbers
-        const userPhones = await userPhonesCollection.find({}).toArray();
-        const phoneNumbers = userPhones.flatMap(user => user.phones); // Flatten the array of phone numbers
-
-        // Send messages to each phone number
         let sentCount = 0;
         for (const phone of phoneNumbers) {
-            const sendMessageResult = await sendMessageToUser (client, phone, message);
+            const sendMessageResult = await sendMessageToUser(client, phone, message);
             if (sendMessageResult.success) {
                 sentCount++;
             } else {
@@ -102,6 +120,7 @@ app.post('/api/messages/bulk', async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to send bulk messages' });
     }
 });
+
 
 
 app.put('/api/orders/:id', async (req, res) => {
