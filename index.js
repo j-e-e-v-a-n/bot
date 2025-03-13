@@ -921,22 +921,24 @@ client.on('message', async (message) => {
             console.log(`✅ Added new phone number to userPhones: ${cleanedPhoneNumber}`);
         }
 
-        // 🟢 GREETINGS & FAQs
-        if (msg.includes('hi') || msg.includes('hello') || msg.includes('hey')) {
-            const welcomeMsg = formatMessage('welcome', {
-                businessName: settings.businessName
-            });
+        const cleanMsg = msg.toLowerCase().trim();
 
-            const menuOptions =
-                `${welcomeMsg}\n\n` +
-                `Choose from these options:\n\n` +
-                `1️⃣ Type *"how to order"* for ordering instructions\n` +
-                `2️⃣ Type *"delivery"* for shipping information\n` +
-                `3️⃣ Type *"track"* to track your order\n` +
-                `4️⃣ Type *"products"* to view our catalog`;
-
-            await message.reply(menuOptions);
-            return;
+        if (
+          cleanMsg === 'hi' || cleanMsg === 'hello' || cleanMsg === 'hey') {
+          const welcomeMsg = formatMessage('welcome', {
+            businessName: settings.businessName
+          });
+        
+          const menuOptions =
+            `${welcomeMsg}\n\n` +
+            `Choose from these options:\n\n` +
+            `1️⃣ Type *"how to order"* for ordering instructions\n` +
+            `2️⃣ Type *"delivery"* for shipping information\n` +
+            `3️⃣ Type *"track"* to track your order\n` +
+            `4️⃣ Type *"products"* to view our catalog`;
+        
+          await message.reply(menuOptions);
+          return;
         }
 
         // 🔵 CUSTOM MESSAGE REPLIES

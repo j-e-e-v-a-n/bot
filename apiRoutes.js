@@ -99,13 +99,15 @@ router.post('/send-message', async (req, res) => {
     }
 
     try {
-        await sendMessageToUser (phone, message);
+        await sendMessageToUser (client, phone, message);
         return res.status(200).json({ success: true, message: 'Message sent successfully.' });
     } catch (error) {
         console.error('Error sending message:', error);
         return res.status(500).json({ error: 'Failed to send message.' });
     }
 });
+
+
 
 
 
