@@ -80,18 +80,43 @@ async function startServer() {
         });
 
         app.put('/api/orders/:id/tracking', async (req, res) => {
-            const { trackingNumber, deliveryDate } = req.body;
+            const { trackingNumber, deliveryDate, userPhone } = req.body;
+        
             try {
+                // Update the tracking number and delivery date
                 await data.updateTrackingDeliveryDate(req.params.id, { trackingNumber, deliveryDate });
-                const userPhone = req.body.userPhone; // Assuming you pass the user's phone number
+        
+                // Prepare the message
                 const message = `📦 Your order #${req.params.id} has been updated with tracking number: ${trackingNumber} and delivery date: ${deliveryDate}.`;
-                await sendMessageToUser (userPhone, message);
-                res.json({ message: 'Tracking information updated successfully.' });
+        
+                console.log("Prepared message for tracking update:", message);
+        
+                // Send the message by making an HTTP POST request to your /send-message route
+                try {
+                    const response = await axios.post('https://bot-1-nyuj.onrender.com/api/send-message', {
+                        phone: userPhone,
+                        message: message
+                    });
+        
+                    if (response.data.success) {
+                        console.log('✅ Tracking update message sent successfully');
+                        res.json({ message: 'Tracking information updated and message sent successfully.' });
+                    } else {
+                        console.error('❌ Failed to send tracking update message');
+                        res.status(500).json({ error: 'Tracking updated but failed to send message.' });
+                    }
+        
+                } catch (sendError) {
+                    console.error('❌ Error sending tracking update message:', sendError.message);
+                    res.status(500).json({ error: 'Tracking updated but failed to send message.' });
+                }
+        
             } catch (error) {
-                console.error('Error updating tracking information:', error);
+                console.error('❌ Error updating tracking information:', error);
                 res.status(500).json({ error: 'Failed to update tracking information' });
             }
         });
+        
         let isClientReady = false;
 
 client.on('ready', () => {
@@ -134,7 +159,7 @@ app.put('/api/orders/:id', async (req, res) => {
 
         // Instead of calling sendMessageToUser, make a POST request to the /send-message endpoint
         try {
-            const response = await axios.post('http://localhost:5000/send-message', {
+            const response = await axios.post('https://bot-1-nyuj.onrender.com/api/send-message', {
                 phone: userPhone,
                 message: message
             });
