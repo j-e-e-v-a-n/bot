@@ -3,7 +3,7 @@ import moment from 'moment';
 import { getDB } from './models/db.js';
 import { sendMessageToUser } from './utils/sendMessage.js';
 import * as data from './models/data.js'; // since you're using data.getSettings() later
-import { client } from ''
+import { client } from './index.js'
 
 const router = express.Router();
 
