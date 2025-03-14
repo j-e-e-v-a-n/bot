@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
 import { Package, Users, MessageSquare, Settings as SettingsIcon, Menu, X, LogOut } from 'lucide-react';
+
 import OrdersTable from './components/OrdersTable';
 import BulkMessaging from './components/BulkMessaging';
 import CustomerList from './components/CustomerList';
@@ -10,12 +11,14 @@ import AddProduct from './components/AddProduct';
 import EditProduct from './components/EditProduct';
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
+
 import { API_ENDPOINTS } from './api/config';
 
+// NavLink Component
 function NavLink({ to, icon: Icon, children }: { to: string; icon: React.ElementType; children: React.ReactNode }) {
   const location = useLocation();
   const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
-  
+
   return (
     <Link
       to={to}
@@ -31,16 +34,26 @@ function NavLink({ to, icon: Icon, children }: { to: string; icon: React.Element
   );
 }
 
+// App Component
 function App() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isMaintenance, setIsMaintenance] = useState(false);
 
+  // Maintenance Mode Check
+  useEffect(() => {
+    const maintenanceMode = process.env.REACT_APP_MAINTENANCE_MODE === 'true';
+    setIsMaintenance(maintenanceMode);
+  }, []);
+
+  // Authentication & Orders Fetch
   useEffect(() => {
     const auth = localStorage.getItem('isAuthenticated');
     setIsAuthenticated(auth === 'true');
+
     if (auth === 'true') {
       fetchOrders();
     }
@@ -67,6 +80,18 @@ function App() {
     setIsAuthenticated(false);
   };
 
+  // === MAINTENANCE PAGE ===
+  if (isMaintenance) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        <h1 className="text-4xl font-bold text-blue-600 mb-4">🚧 Under Maintenance 🚧</h1>
+        <p className="text-gray-600 text-lg mb-8">We're working on something awesome. Please check back soon!</p>
+        <p className="text-sm text-gray-400">Contact support if you need immediate assistance.</p>
+      </div>
+    );
+  }
+
+  // === NORMAL APP ===
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
