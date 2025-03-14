@@ -26,7 +26,7 @@ import Home from './components/Home';
 import { API_ENDPOINTS } from './api/config';
 
 // Maintenance Mode toggle via environment variable
-const isMaintenanceMode = process.env.REACT_APP_MAINTENANCE_MODE === 'true';
+const isMaintenanceMode =  'true';
 
 interface NavLinkProps {
   to: string;
