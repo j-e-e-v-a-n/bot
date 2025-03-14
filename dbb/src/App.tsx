@@ -71,14 +71,9 @@ function App() {
     setIsAuthenticated(false);
   };
 
-  // ✅ Show maintenance page if enabled
-  if (isMaintenanceMode) {
-    return <MaintenancePage />;
-  }
-
   return (
     <Router>
-      {isUnderMaintenance ? (
+      {isMaintenanceMode ? (
         <MaintenancePage />
       ) : (
         <div className="min-h-screen bg-gray-50">
