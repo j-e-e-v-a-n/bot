@@ -110,14 +110,14 @@ const OrdersTable: React.FC<Props> = ({ orders, onOrderUpdate }) => {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Orders</h2>
-          {/* <div className="flex space-x-2">
+          <div className="flex space-x-2">
             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
               Export
             </button>
             <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
               New Order
             </button>
-          </div> */}
+          </div>
         </div>
 
         {notification && (
@@ -269,34 +269,37 @@ const OrdersTable: React.FC<Props> = ({ orders, onOrderUpdate }) => {
       </div>
 
       {pendingChanges && (
-        <div className="fixed bottom-4 right-4 max-w-sm w-full bg-white rounded-lg shadow-lg border border-gray-200 p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <AlertCircle className="h-6 w-6 text-yellow-500" />
-            </div>
-            <div className="ml-3 w-0 flex-1 pt-0.5">
-              <p className="text-sm font-medium text-gray-900">Notify Customer?</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Would you like to notify the customer about these changes?
-              </p>
-              <div className="mt-3 flex space-x-2">
-                <button
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  onClick={handleSaveChanges}
-                >
-                  Yes, Notify
-                </button>
-                <button
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  onClick={() => setPendingChanges(null)}
-                >
-                  No, Skip
-                </button>
-              </div>
-            </div>
-          </div>
+  <div className="fixed bottom-4 right-4 max-w-sm w-full bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+    <div className="flex items-start">
+      <div className="flex-shrink-0">
+        <AlertCircle className="h-6 w-6 text-yellow-500" />
+      </div>
+      <div className="ml-3 w-0 flex-1 pt-0.5">
+        <p className="text-sm font-medium text-gray-900">Notify Customer?</p>
+        <p className="mt-1 text-sm text-gray-500">
+          Would you like to notify the customer about these changes?
+        </p>
+        <div className="mt-3 flex space-x-2">
+          <button
+            onClick={handleSaveChanges}
+            className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-green-700 transition-colors"
+          >
+            Notify
+          </button>
+          <button
+            onClick={() => {
+              setPendingChanges(null);
+              onOrderUpdate();
+            }}
+            className="inline-flex items-center px-3 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg shadow-sm hover:bg-gray-300 transition-colors"
+          >
+            Dismiss
+          </button>
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
