@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Ping Render API (bot-1-nyuj)
-        run: curl -I https://bot-1-nyuj.onrender.com/api/orders
+        run: curl -I https://bot-1-nyuj.onrender.com
 
       - name: Ping Render API (bot-ir83)
         run: curl -I https://bot-ir83.onrender.com/api/settings

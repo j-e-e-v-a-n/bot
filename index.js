@@ -44,6 +44,7 @@ const io = new Server(server, {
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html')); // Adjust the path as necessary
+    res.send('✅ Bot is alive!');
 });
 
 // ✅ Load Settings
