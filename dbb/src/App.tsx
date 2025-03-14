@@ -8,6 +8,8 @@ import {
   Menu,
   X,
   LogOut,
+  Home as HomeIcon,
+  AlertTriangle,
 } from 'lucide-react';
 
 import OrdersTable from './components/OrdersTable';
@@ -20,10 +22,10 @@ import EditProduct from './components/EditProduct';
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import MaintenancePage from './components/MaintenancePage';
-import Home from './components/Home'; // ✅ Add this import (assuming you have Home.tsx)
+import Home from './components/Home';
 import { API_ENDPOINTS } from './api/config';
 
-// ✅ Maintenance Mode from env variable
+// Maintenance Mode toggle via environment variable
 const isMaintenanceMode = process.env.REACT_APP_MAINTENANCE_MODE === 'true';
 
 interface NavLinkProps {
@@ -98,10 +100,8 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen bg-gray-50">
-        {/* Sidebar and Navigation for authenticated users */}
         {isAuthenticated && (
           <>
-            {/* Mobile Sidebar Toggle */}
             <div className="lg:hidden fixed top-4 left-4 z-50">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -122,6 +122,9 @@ const App: React.FC = () => {
                 <p className="text-blue-100 text-sm mt-1">Welcome back, Admin</p>
               </div>
               <nav className="mt-6 space-y-1">
+                <NavLink to="/" icon={HomeIcon}>
+                  Home
+                </NavLink>
                 <NavLink to="/orders" icon={Package}>
                   Orders
                 </NavLink>
@@ -149,7 +152,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Mobile Overlay */}
             {isSidebarOpen && (
               <div
                 className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
@@ -227,6 +229,9 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 }
               />
+
+              {/* Maintenance Route Example (optional!) */}
+              <Route path="/maintenance" element={<MaintenancePage />} />
             </Routes>
           </div>
         </div>
