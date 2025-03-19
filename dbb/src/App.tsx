@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+require('dotenv').config(); 
 import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
 import {
   Package,
@@ -26,7 +27,7 @@ import Home from './components/Home';
 import { API_ENDPOINTS } from './api/config';
 
 // Maintenance Mode toggle via environment variable
-const isMaintenanceMode =  'false';
+const isMaintenanceMode = process.env.MAINTENANCE_MODE === 'true';
 
 interface NavLinkProps {
   to: string;
