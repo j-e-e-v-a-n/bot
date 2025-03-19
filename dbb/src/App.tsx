@@ -26,7 +26,7 @@ import Home from './components/Home';
 import { API_ENDPOINTS } from './api/config';
 
 // Maintenance Mode toggle via environment variable
-const isMaintenanceMode =  'true';
+const isMaintenanceMode =  'false';
 
 interface NavLinkProps {
   to: string;
