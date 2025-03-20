@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 const RENDER_URLS = [
-  'https://bot-1-nyuj.onrender.com/api/orders',
+  'http://localhost:5000/api/orders',
   'https://bot-ir83.onrender.com/api/settings'
 ];
 
@@ -13,7 +13,7 @@ export const usePingService = () => {
   const pingSites = async () => {
     try {
       const results = await Promise.all(
-        RENDER_URLS.map(url => 
+        RENDER_URLS.map(url =>
           fetch(url, { mode: 'no-cors' })
             .then(() => console.log(`Pinged ${url} successfully`))
             .catch(err => console.error(`Failed to ping ${url}:`, err))
