@@ -67,25 +67,17 @@ async function loadSettings() {
         await connectDB(); // Ensure the database is connected
         console.log('✅ Connected to MongoDB');
 
-        await loadSettings(); // Load settings after connecting to the database
+        await loadSettings(); // Load settings only once after connecting
         console.log('✅ Initial settings loaded');
 
-        setInterval(async () => {
-            try {
-                console.log('🔄 Refreshing settings...');
-                await loadSettings();
-                console.log('✅ Settings refreshed');
-            } catch (error) {
-                console.error('❌ Failed to refresh settings:', error.message);
-            }
-        }, 600000); // Every 10 minutes
-
-        await loadProducts(); // Load products after connecting to the database
+        await loadProducts(); // Load products after connecting
         console.log('✅ Products loaded');
+
     } catch (error) {
         console.error('❌ Error connecting to MongoDB or loading data:', error.message);
     }
 })();
+
 
 // Define collection names
 const ordersCollectionName = 'orders'; // Replace with your actual orders collection name
