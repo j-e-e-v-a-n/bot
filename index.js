@@ -1254,6 +1254,11 @@ client.on('message', async (message) => {
             // ✅ Start WhatsApp Client & Server
             client.initialize();
             server.listen(config.PORT, () => {
+                setInterval(() => {
+                    axios.get(`https://bot-1-nyuj.onrender.com/health`)
+                        .then(() => console.log("Self-ping successful"))
+                        .catch((err) => console.error("Self-ping failed:", err.message));
+                }, 5 * 60 * 1000);
                 console.log(`🚀 Server is running at http://localhost:${config.PORT}`);
             });
             

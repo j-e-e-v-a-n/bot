@@ -28,9 +28,7 @@ headless: true,
 args: ['--no-sandbox', '--disable-setuid-sandbox'],
 },
 });
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
-  });  
+ 
 
 client.on('ready', () => {
     console.log('✅ WhatsApp Client is ready!');
@@ -63,6 +61,10 @@ app.get('/', (req, res) => {
     res.json({ message: 'Server is working!' }); // Respond with a JSON message
 });
 
+
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  }); 
 
 
 // Connect to the database
@@ -344,8 +346,14 @@ app.put('/api/products/:id', async (req, res) => {
       });
 
       // Start the server
-      app.listen(PORT, '0.0.0.0', () => {
+      app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
+        setInterval(() => {
+            axios.get(`https://bot-ir83.onrender.com/health`)
+                .then(() => console.log("Self-ping successful"))
+                .catch((err) => console.error("Self-ping failed:", err.message));
+        }, 5 * 60 * 1000);
+    
       });
   } catch (error) {
       console.error('❌ Failed to connect to the database:', error);
