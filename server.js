@@ -28,6 +28,9 @@ headless: true,
 args: ['--no-sandbox', '--disable-setuid-sandbox'],
 },
 });
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });  
 
 client.on('ready', () => {
     console.log('✅ WhatsApp Client is ready!');

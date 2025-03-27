@@ -132,6 +132,9 @@ args: ['--no-sandbox', '--disable-setuid-sandbox'],
 });
   
   // ✅ API Routes
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });  
   app.use('/api', apiRoutes);
   
   let qrCodeData = null;
