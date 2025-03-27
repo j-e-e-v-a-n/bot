@@ -4,6 +4,7 @@ import { Server } from 'socket.io'; // Import Socket.IO
 import whatsappWeb from 'whatsapp-web.js'; // Import the entire module
 import qrcodeTerminal from 'qrcode-terminal';
 import QRCode from 'qrcode';
+import axios  from 'axios';
 import path, { dirname } from 'path'; // Import dirname from path
 import { fileURLToPath } from 'url'; // Import fileURLToPath from url
 import fs from 'fs';
